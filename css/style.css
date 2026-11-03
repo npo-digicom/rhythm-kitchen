@@ -1,0 +1,305 @@
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cream:   #FFF8F0;
+  --wood:    #8B6038;
+  --green:   #2E7D6E;
+  --red:     #D93A28;
+  --dark:    #1A0A00;
+  --muted:   #5A3A20;
+  --shadow:  rgba(0, 0, 0, 0.18);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--cream);
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'YuGothic', 'Meiryo', sans-serif;
+  color: var(--dark);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* ── Screens ────────────────────────────────────────────────── */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+}
+.screen.active               { display: flex; flex-direction: column; }
+#screen-start.active,
+#screen-complete.active      { align-items: center; justify-content: center; }
+#screen-complete.active      { overflow-y: auto; }
+
+/* ── Button base ────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: 3rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  padding: 1rem 3rem;
+  min-width: 14rem;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(46, 125, 110, 0.35);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.btn-primary:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(46, 125, 110, 0.2);
+}
+
+/* ── ① Start screen ─────────────────────────────────────────── */
+.start-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 480px;
+}
+.start-logo  { font-size: 5rem; line-height: 1; }
+.start-title { font-size: 2.4rem; font-weight: 900; letter-spacing: 0.05em; }
+.start-dish-box {
+  background: #fff;
+  border: 3px solid var(--wood);
+  border-radius: 1.5rem;
+  padding: 1.4rem 2rem;
+  text-align: center;
+  width: 100%;
+}
+.start-label    { font-size: 1rem; color: var(--muted); }
+.start-dish     { font-size: 2.2rem; font-weight: 700; margin: 0.35rem 0; }
+.start-subtitle { font-size: 1rem; color: var(--muted); }
+
+/* ── ② Game screen ──────────────────────────────────────────── */
+#timer-bar {
+  width: 100%;
+  height: 10px;
+  background: #E0D0C0;
+  flex-shrink: 0;
+}
+#timer-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--green);
+  transition: width 0.25s linear;
+}
+
+#game-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, #FFF0DC 0%, #FFE4C4 100%);
+}
+
+/* Lane: ingredient elements live here */
+#lane {
+  position: absolute;
+  inset: 0;
+}
+
+/* まな板 */
+#cutting-board {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 12px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 5;
+}
+.board-cap {
+  height: 24px;
+  background: var(--wood);
+  border-radius: 6px;
+}
+.board-body {
+  flex: 1;
+  background: var(--wood);
+  opacity: 0.55;
+}
+
+/* ── Ingredients ────────────────────────────────────────────── */
+.ingredient {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  /* left is set by JS */
+}
+
+.ingredient-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 14px var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.ingredient-circle img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ingredient-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--dark);
+}
+
+/* Cut animation */
+@keyframes ing-cut {
+  0%   { transform: translateY(-50%) scale(1)    rotate(0deg);  opacity: 1; }
+  25%  { transform: translateY(-65%) scale(1.28) rotate(-8deg); opacity: 1; }
+  65%  { transform: translateY(-35%) scale(0.75) rotate(18deg); opacity: 0.7; }
+  100% { transform: translateY(5%)   scale(0.15) rotate(30deg); opacity: 0; }
+}
+.ingredient.cut {
+  animation: ing-cut 0.72s ease-out forwards;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ── Fact box (overlays bottom of game-area) ─────────────────── */
+#fact-box {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 248, 240, 0.97);
+  border-top: 3px solid var(--wood);
+  padding: 1rem 1.4rem;
+  text-align: center;
+  z-index: 30;
+  transform: translateY(100%);
+  transition: transform 0.25s ease-out;
+}
+#fact-box.visible {
+  transform: translateY(0);
+}
+#fact-quality {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 0.3rem;
+}
+#fact-text {
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--dark);
+}
+
+/* ── Cut button ─────────────────────────────────────────────── */
+#btn-cut {
+  flex-shrink: 0;
+  width: 100%;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  padding: 1.15rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  transition: filter 0.08s;
+  /* Safe area for iPhone home indicator */
+  padding-bottom: calc(1.15rem + env(safe-area-inset-bottom, 0px));
+}
+#btn-cut:active { filter: brightness(0.88); }
+.cut-icon { font-size: 2rem; line-height: 1; }
+.cut-label { letter-spacing: 0.1em; }
+
+/* ── ③ Complete screen ──────────────────────────────────────── */
+.complete-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 480px;
+  min-height: 100%;
+  justify-content: center;
+}
+.complete-title {
+  font-size: 2.6rem;
+  font-weight: 900;
+}
+.dish-plate {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: #FFF0DC;
+  border: 5px solid var(--wood);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 4.5rem;
+  flex-shrink: 0;
+}
+.dish-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+}
+.dish-dummy { line-height: 1; }
+
+#recipe-card {
+  background: #fff;
+  border: 3px solid var(--wood);
+  border-radius: 1.5rem;
+  padding: 1.5rem 1.8rem;
+  width: 100%;
+}
+#recipe-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+#recipe-card ol {
+  padding-left: 1.6rem;
+}
+#recipe-card li {
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+/* ── Desktop / landscape adjustments ───────────────────────── */
+@media (min-width: 600px) {
+  .ingredient-circle { width: 96px; height: 96px; font-size: 2.6rem; }
+  .ingredient        { width: 96px; }
+  .start-title       { font-size: 3rem; }
+  #btn-cut           { font-size: 1.9rem; }
+}

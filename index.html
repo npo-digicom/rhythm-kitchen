@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>リズムキッチン</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ① はじまりの画面 -->
+  <div id="screen-start" class="screen active">
+    <div class="start-inner">
+      <div class="start-logo">🍳</div>
+      <h1 class="start-title">リズムキッチン</h1>
+      <div class="start-dish-box">
+        <p class="start-label">今日作るのは</p>
+        <p class="start-dish">プサリ・プラキ</p>
+        <p class="start-subtitle">ギリシャの煮魚料理</p>
+      </div>
+      <button id="btn-start" class="btn-primary">はじめる</button>
+    </div>
+  </div>
+
+  <!-- ② ゲーム画面 -->
+  <div id="screen-game" class="screen">
+    <div id="timer-bar"><div id="timer-fill"></div></div>
+
+    <div id="game-area">
+      <div id="lane" role="region" aria-label="食材レーン"></div>
+
+      <!-- まな板（中央固定） -->
+      <div id="cutting-board" aria-hidden="true">
+        <div class="board-cap"></div>
+        <div class="board-body"></div>
+        <div class="board-cap"></div>
+      </div>
+
+      <!-- ひとこと話（ゲームエリア内に重ねて表示） -->
+      <div id="fact-box" aria-live="polite">
+        <p id="fact-quality"></p>
+        <p id="fact-text"></p>
+      </div>
+    </div>
+
+    <!-- 切るボタン -->
+    <button id="btn-cut" aria-label="食材を切る">
+      <span class="cut-icon">✂</span>
+      <span class="cut-label">切る</span>
+    </button>
+  </div>
+
+  <!-- ③ 完成画面 -->
+  <div id="screen-complete" class="screen">
+    <div class="complete-inner">
+      <h2 class="complete-title">できあがり！</h2>
+
+      <div class="dish-plate">
+        <img src="images/dish_psari_plaki.png" alt="プサリ・プラキの完成"
+             onerror="this.style.display='none'">
+        <div class="dish-dummy" aria-hidden="true">🐟🍅</div>
+      </div>
+
+      <div id="recipe-card">
+        <h3>電子レンジで作る<br>プサリ・プラキ</h3>
+        <ol>
+          <li>イワシに塩をふり、耐熱皿に並べる</li>
+          <li>玉ねぎ・にんにく・トマトをのせる</li>
+          <li>塩漬けオリーブとレモン汁を加える</li>
+          <li>オリーブオイルをかけてラップをする</li>
+          <li>600W で 8 分加熱する</li>
+          <li>パセリを散らして完成！</li>
+        </ol>
+      </div>
+
+      <button id="btn-retry" class="btn-primary">もう一度</button>
+    </div>
+  </div>
+
+  <!-- BGM差し替え用のaudio要素（src を差し替えるだけで使えます） -->
+  <!-- <audio id="bgm" src="audio/bgm.mp3" loop></audio> -->
+
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
