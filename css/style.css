@@ -739,7 +739,7 @@ html, body {
 }
 .order-result[hidden] { display: none; }
 .order-result-pelican { width: 92px; height: 92px; flex-shrink: 0; animation: pelican-bob 1s ease-in-out infinite; }
-.order-result .speech { flex: 1; font-size: 1.3rem; animation: big-in 0.5s cubic-bezier(.2, 1.6, .5, 1); }
+.order-result .speech { flex: 1; font-size: 1.2rem; padding: 8px 12px; animation: big-in 0.5s cubic-bezier(.2, 1.6, .5, 1); }
 .order-result.match .speech { border-color: var(--orange); background: #FFF7D6; }
 
 #celebrate-layer {
