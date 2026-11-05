@@ -2,14 +2,14 @@
 
 /**
  * data フォルダの JSON を読み込み、ほかの部品から使いやすい形にまとめます。
- * JSON を書き換えるだけで、食材・料理・空想レシピ・設定が変わります。
+ * JSON を書き換えるだけで、食材・料理・おはなし・設定が変わります。
  */
 const Data = (() => {
   const FILES = {
     settings:    'data/settings.json',
     ingredients: 'data/ingredients.json',
     dishes:      'data/dishes.json',
-    fantasy:     'data/fantasy.json',
+    story:       'data/story.json',
     vessels:     'data/vessels.json',
   };
 
@@ -20,7 +20,7 @@ const Data = (() => {
     byId: {},
     dishes: [],
     portions: [],
-    fantasy: null,
+    story: null,
     vessels: null,
   };
 
@@ -58,6 +58,10 @@ const Data = (() => {
       { sutto: 45, kurutto: 25, fuchi: 10, bonbon: 12, makikomi: 8 }, store.settings.entry.weights);
     store.settings.phases = store.settings.phases.slice().sort((a, b) => a.startSec - b.startSec)
       .map(ph => Object.assign({ maxOnScreen: 3, spawnEveryBeats: 2, speed: 1, message: '' }, ph));
+    store.settings.story = Object.assign({
+      storageKey: 'rhythmKitchen.story.v1', stampsPerChapter: 3, guestChance: 0.15, maxGuestsPerGame: 1,
+      guestAppearSec: [15, 65], guestStaySec: 11, unmetFavor: 6, guestTapRadius: 95,
+    }, store.settings.story);
     store.settings.seagull = Object.assign({
       firstDelaySec: 4, intervalSec: [8, 12], approachSec: 1.8, escapeSec: 3, tapRadius: 90,
     }, store.settings.seagull);
@@ -83,12 +87,37 @@ const Data = (() => {
 
     store.dishes = raw.dishes.dishes || [];
     store.portions = (raw.dishes.portions || []).slice().sort((a, b) => a.minCount - b.minCount);
-    store.fantasy = raw.fantasy;
+    store.story = normalizeStory(raw.story);
     store.vessels = Object.assign({
       start: 'zaru', arriveMessage: '{vessel}がやってきた!', changeMessage: 'やっぱり{vessel}にしよう!',
       vessels: {}, dishToVessel: {},
     }, raw.vessels);
     return store;
+  }
+
+  /** story.json を、書き間違いがあっても動くように整える */
+  function normalizeStory(st) {
+    st = st || {};
+    const arr = v => (Array.isArray(v) ? v : []);
+    return {
+      labels: Object.assign({
+        kobanashiHeading: '⚓ 港のこばなし', kobanashiButton: 'もうひとつ、おはなし',
+        newChapter: '📮 新しいおはなしが届きました', newGuest: '✨ 特別なお客さまのおはなし',
+        tapToRead: 'タップして読む', stampBook: 'スタンプ帳', stampsHeading: 'たまったスタンプ',
+        stampsUntilNext: 'あと{n}つで、次のおはなし', allChaptersOpen: 'おはなしは全部ひらきました',
+        charactersHeading: '登場する鳥たち', chaptersHeading: '本編のおはなし', guestsHeading: '特別なお客さま',
+        guestThanks: '{name}が来てくれた!', guestStamp: '特別なスタンプをもらったよ', guestHint: 'タップしてみて',
+        chapterLabel: '第{n}話', guestLabel: '特別なお客さま', close: 'とじる',
+      }, st.labels),
+      characters: arr(st.characters).filter(c => c && c.name),
+      chapters: arr(st.chapters).filter(c => c && (c.title || c.text))
+        .map(c => ({ title: c.title || '', text: c.text || '' })),
+      guests: arr(st.guests).filter(g => g && g.id && g.name).map(g => Object.assign({
+        emoji: '✨', color: '#C9A100', weight: 1, text: '', image: 'images/guest_' + g.id + '.png',
+      }, g)),
+      kobanashi: arr(st.kobanashi).filter(t => typeof t === 'string' && t.trim()),
+      disclaimer: st.disclaimer || '',
+    };
   }
 
   return { load, get: () => store };

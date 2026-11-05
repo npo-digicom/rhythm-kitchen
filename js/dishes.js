@@ -1,18 +1,10 @@
 'use strict';
 
 /**
- * 料理の決まり方と、空想レシピ作り。
+ * 料理の決まり方。
  */
 const Dishes = (() => {
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-  const shuffle = arr => {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
 
   // dishes.json の ingredients の1行を「どれかがあればOK」の id リストにする
   function reqIds(req) {
@@ -88,56 +80,5 @@ const Dishes = (() => {
     return [...ids];
   }
 
-  // ── 空想レシピ ──────────────────────────────────────────
-  let lastTitle = '';
-
-  function fill(text, vars) {
-    return text.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
-  }
-
-  /**
-   * つかまえた食材の名前リストから、空想レシピを1つ作る。
-   * dishId を渡すと、fantasy.json の dishExtras にあるその料理用の部品もまぜる。
-   * 前回と同じ題名にならないように作り直す。
-   */
-  function fantasy(names, dishId) {
-    const base = Data.get().fantasy;
-    // 料理ごとの部品(dishExtras)があれば、ふだんの部品にまぜる
-    const extra = (base.dishExtras && dishId && base.dishExtras[dishId]) || {};
-    const f = Object.assign({}, base);
-    ['titlePatterns', 'steps', 'comments'].forEach(k => {
-      if (Array.isArray(extra[k]) && extra[k].length) {
-        // 料理ごとの部品が出やすいように2回ずつ入れる
-        f[k] = (base[k] || []).concat(extra[k], extra[k]);
-      }
-    });
-    let pool = names.slice();
-    if (pool.length === 0) pool = shuffle(Data.get().ingredients.map(i => i.name)).slice(0, 3);
-
-    let result;
-    for (let tries = 0; tries < 8; tries++) {
-      const ing = shuffle(pool);
-      const vars = {
-        a: ing[0],
-        b: ing[1] || ing[0],
-        c: ing[2] || ing[1] || ing[0],
-        country: pick(f.countries),
-        form: pick(f.forms),
-      };
-      // 食材が1種類だけのときは、同じ名前が並ぶ題名を避ける
-      const patterns = f.titlePatterns.filter(p => ing.length >= 3 || !p.includes('{c}'))
-        .filter(p => ing.length >= 2 || !p.includes('{b}'));
-      const title = fill(pick(patterns.length ? patterns : f.titlePatterns), vars);
-      const n = () => String(2 + Math.floor(Math.random() * 6));
-      const steps = shuffle(f.steps).slice(0, 4).map(s => fill(s, Object.assign({ n: n() }, vars)));
-      steps.push(fill(pick(f.finishes), Object.assign({ n: n() }, vars)));
-      const comment = fill(pick(f.comments), vars);
-      result = { title, steps, comment };
-      if (title !== lastTitle) break;
-    }
-    lastTitle = result.title;
-    return result;
-  }
-
-  return { choose, pickOrder, dishIngredientIds, portion, usedIngredients, fantasy };
+  return { choose, pickOrder, dishIngredientIds, portion, usedIngredients };
 })();

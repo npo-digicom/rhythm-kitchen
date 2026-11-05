@@ -39,6 +39,7 @@ const App = (() => {
     }
 
     Zukan.init(Data.get().settings.zukanStorageKey);
+    Story.init(Data.get().settings.story.storageKey);
     Game.init();
 
     $('btn-start').disabled = false;
@@ -53,7 +54,7 @@ const App = (() => {
     $('zukan-detail').addEventListener('click', e => {
       if (e.target.id === 'zukan-detail') Zukan.closeDetail();
     });
-    onPress('btn-fantasy', () => renderFantasy(true));
+    onPress('btn-koba', () => renderKobanashi(true));
   }
 
   async function startGame() {
@@ -124,10 +125,10 @@ const App = (() => {
     fillList($('recipe-materials'), r.materials || []);
     fillList($('recipe-steps'), r.steps || []);
 
-    const f = Data.get().fantasy;
-    $('fantasy-heading').textContent = f.heading || '🌈 空想レシピ';
-    $('fantasy-notice').textContent = f.notice || 'これは空想の料理です。';
-    renderFantasy(false);
+    const L = Data.get().story.labels;
+    $('koba-heading').textContent = L.kobanashiHeading;
+    $('btn-koba').textContent = L.kobanashiButton;
+    renderKobanashi(false);
 
     show('complete');
     celebrate(order, dish);
@@ -262,18 +263,14 @@ const App = (() => {
     return v;
   }
 
-  function renderFantasy(animate) {
-    if (!lastResult) return;
-    const names = lastResult.caughtIngs.map(i => i.name);
-    const fr = Dishes.fantasy(names, lastResult.dish && lastResult.dish.id);
-    $('fantasy-title').textContent = fr.title;
-    fillList($('fantasy-steps'), fr.steps);
-    $('fantasy-comment').textContent = fr.comment;
+  /** 港のこばなし(直前と同じものは出さない) */
+  function renderKobanashi(animate) {
+    $('koba-text').textContent = Story.nextKobanashi();
     if (animate) {
-      const card = document.querySelector('.fantasy-card');
-      card.classList.remove('refresh');
-      void card.offsetWidth;
-      card.classList.add('refresh');
+      const t = $('koba-text');
+      t.classList.remove('refresh');
+      void t.offsetWidth;
+      t.classList.add('refresh');
     }
   }
 

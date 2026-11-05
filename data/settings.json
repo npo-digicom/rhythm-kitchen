@@ -75,6 +75,20 @@
   "respawnDelaySec": 4,
   "stopSpawningBeforeEndSec": 4,
   "zukanStorageKey": "rhythmKitchen.zukan.v1",
+  "story": {
+    "_memo": "おはなしとスタンプの設定。stampsPerChapter=本編が1話開くのに必要なスタンプの数(料理1回で1つ)。guestChance=1回のゲームで特別なお客さまが来る確率(0.15 なら15%、0 で来ない、1 で毎回)。maxGuestsPerGame=1回のゲームで来る人数の上限。guestAppearSec=来る時間(ゲーム開始から何秒の間)。guestStaySec=画面を横切る秒数(この間にタップ)。unmetFavor=まだ会っていないお客さまの出やすさの倍率。お客さまごとの出やすさは story.json の weight。storageKey=記録を保存する名前(変えると記録がまっさらになります)。",
+    "storageKey": "rhythmKitchen.story.v1",
+    "stampsPerChapter": 3,
+    "guestChance": 0.15,
+    "maxGuestsPerGame": 1,
+    "guestAppearSec": [
+      15,
+      65
+    ],
+    "guestStaySec": 11,
+    "unmetFavor": 6,
+    "guestTapRadius": 95
+  },
   "pelican": {
     "_memo": "ペリカンのせりふ。{dish} は料理の名前に置きかわります。",
     "ask": "今日は{dish}が食べたいな",

@@ -14,7 +14,7 @@
   --green:      #17695A;   /* 主ボタン */
   --green-dark: #0E4A3F;
   --orange:     #C94A0C;
-  --purple:     #5B2E91;   /* 空想レシピ */
+  --purple:     #5B2E91;
   --purple-bg:  #F4ECFF;
   --line:       #D8BE96;
   --radius:     22px;
@@ -136,13 +136,13 @@ html, body {
   min-height: 68px;
   font-size: 1.2rem;
 }
-.btn-fantasy {
-  background: var(--purple);
+.btn-koba {
+  background: #2E7DA6;
   color: #fff;
   min-height: 68px;
   font-size: 1.15rem;
   margin-top: 14px;
-  box-shadow: 0 5px 0 #3B1A63;
+  box-shadow: 0 5px 0 #1B5E80;
 }
 
 /* ── ① はじまり ───────────────────────────────────────────── */
@@ -881,32 +881,13 @@ html, body {
 .recipe-steps { padding-left: 1.6em; font-size: 1.05rem; line-height: 1.6; }
 .recipe-steps li { margin-bottom: 6px; }
 
-.fantasy-card {
-  background: var(--purple-bg);
-  border: 4px dashed var(--purple);
+.koba-card {
+  background: #EAF6FB;
+  border: 4px solid #2E7DA6;
 }
-.fantasy-heading { color: var(--purple); font-size: 1.3rem; }
-.fantasy-notice {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #fff;
-  background: var(--purple);
-  border-radius: 12px;
-  padding: 6px 12px;
-  line-height: 1.45;
-  margin-bottom: 12px;
-}
-.fantasy-title {
-  font-size: 1.2rem;
-  font-weight: 900;
-  line-height: 1.45;
-  margin-bottom: 8px;
-}
-.fantasy-steps { padding-left: 1.6em; font-size: 1.05rem; line-height: 1.6; }
-.fantasy-steps li { margin-bottom: 6px; }
-.fantasy-comment { font-size: 1rem; font-weight: 700; color: var(--purple); margin-top: 6px; }
-.fantasy-card.refresh .fantasy-title,
-.fantasy-card.refresh .fantasy-steps { animation: fade-in 0.4s ease-out; }
+.koba-heading { color: #1B5E80; font-size: 1.3rem; }
+.koba-text { font-size: 1.25rem; line-height: 1.95; font-weight: 600; }
+.koba-text.refresh { animation: fade-in 0.4s ease-out; }
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
