@@ -136,7 +136,9 @@ const App = (() => {
 
     // スタンプを1つ。3つたまるごとに本編が1話開く
     const opened = Story.addStamp();
-    renderNotices(opened.map(i => Story.chapterItem(i)));
+    // ゲーム中に会えた特別なお客さまのおはなしも、ここで読める
+    const guestItems = (result.guests || []).map(g => Story.guestItem(g));
+    renderNotices(opened.map(i => Story.chapterItem(i)).concat(guestItems));
     renderStampCard(opened.length > 0);
 
     show('complete');
@@ -281,7 +283,7 @@ const App = (() => {
     items.forEach(item => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'notice-btn' + (item.guest ? ' guest' : '');
+      btn.className = 'notice-btn' + (item.guest ? ' is-guest' : '');
       if (item.color) btn.style.setProperty('--c', item.color);
       btn.innerHTML =
         `<span class="notice-head">${escapeHTML(item.guest ? L.newGuest : L.newChapter)}</span>` +

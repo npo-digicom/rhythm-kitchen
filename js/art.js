@@ -6,6 +6,8 @@
  *   ペリカン  → images/pelican.png
  *   器        → images/vessel_<id>.png(data/vessels.json の image)
  *   カモメ    → images/seagull.png
+ *   特別なお客さま → images/guest_<id>.png(data/story.json の guests)
+ *   スタンプ帳の鳥たち → images/character_<id>.png
  */
 const Art = (() => {
   // ── ペリカン(ダミー) ─────────────────────────────────
@@ -142,5 +144,11 @@ const Art = (() => {
     return artHTML(src, SEAGULL_SVG, 'seagull-art');
   }
 
-  return { artHTML, pelican, vessel, seagull };
+  /** 色を変えたペリカンの絵(SVG)。金色のペトロスや、スタンプ帳の鳥たちに使う */
+  function pelicanTinted(body, wing) {
+    return PELICAN_SVG.replace(/#FFFFFF/g, body).replace('#DCE3EA', wing || body);
+  }
+  function seagullSVG() { return SEAGULL_SVG; }
+
+  return { artHTML, pelican, vessel, seagull, pelicanTinted, pelicanSVG: () => PELICAN_SVG, seagullSVG };
 })();

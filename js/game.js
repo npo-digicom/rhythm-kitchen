@@ -53,6 +53,9 @@ const Game = (() => {
   let order = null;            // ペリカンの注文(料理)
   let orderIds = new Set();    // 注文の料理に使う食材
   let popTimer = null;
+  let guestPlans = [];         // このゲームで来る特別なお客さま { guest, at }
+  let guestNow = null;         // いま画面にいるお客さま
+  let guestsMet = [];          // このゲームでタップして会えたお客さま
 
   function init() {
     S = Data.get().settings;
@@ -142,6 +145,9 @@ const Game = (() => {
     gull = null;
     nextGullAt = null;
     gullCount = 0;
+    guestPlans = Story.planGuests();
+    guestNow = null;
+    guestsMet = [];
     layer.innerHTML = '';
     fx.innerHTML = '';
     pile.innerHTML = '';
@@ -193,6 +199,7 @@ const Game = (() => {
     updateIngredients(dt);
     updateLoose(dt);
     updateSeagull(dt);
+    updateGuest(dt);
 
     if (gameTime >= S.gameSeconds) {
       finish();
@@ -421,6 +428,13 @@ const Game = (() => {
     if (gull && (gull.state === 'approach' || gull.state === 'escape') &&
         Math.hypot(gull.x - x, gull.y - y) < S.seagull.tapRadius) {
       shooSeagull();
+      return;
+    }
+
+    // 特別なお客さま(タップで特別なスタンプ)
+    if (guestNow && guestNow.state === 'float' &&
+        Math.hypot(guestNow.x - x, guestNow.y - y) < Data.get().settings.story.guestTapRadius) {
+      meetGuest();
       return;
     }
 
@@ -932,6 +946,115 @@ const Game = (() => {
     gull = null;
   }
 
+  // ── 特別なお客さま ──────────────────────────────────────
+  // キラキラ光りながら、ゆっくり画面を横切る。タップすると特別なスタンプ。ゲームは止めない
+  const GUEST_SIZE = 116;
+
+  function updateGuest(dt) {
+    const C = Data.get().settings.story;
+    const stay = Math.max(3, Number(C.guestStaySec) || 11);
+    if (!guestNow) {
+      if (!guestPlans.length || gameTime < guestPlans[0].at) return;
+      const plan = guestPlans.shift();
+      // 終わり間近なら来ない(横切る時間が足りないため)
+      if (gameTime < S.gameSeconds - stay - 1) spawnGuest(plan.guest, stay);
+      return;
+    }
+    const g = guestNow;
+    if (g.state !== 'float') return;
+    g.t += dt;
+    const p = g.t / g.stay;
+    const x = g.sx + (g.ex - g.sx) * p;
+    const y = g.baseY + Math.sin(g.t * 1.3) * 26;
+    placeGuest(x, y);
+    g.sparkleIn -= dt;
+    if (g.sparkleIn <= 0) {
+      g.sparkleIn = 0.16;
+      sparkle(x + (Math.random() - 0.5) * GUEST_SIZE * 1.3, y + (Math.random() - 0.5) * GUEST_SIZE * 1.2, false);
+    }
+    if (p >= 1) { g.el.remove(); guestNow = null; }
+  }
+
+  function spawnGuest(guest, stay) {
+    const w = field.clientWidth;
+    const fr = field.getBoundingClientRect();
+    const top = document.getElementById('hud').getBoundingClientRect().bottom - fr.top;
+    const floor = basket.getBoundingClientRect().top - fr.top;
+    // 器より上の、まん中あたりを通る
+    const lo = top + GUEST_SIZE * 0.8, hi = Math.max(lo, floor - GUEST_SIZE * 1.1);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const el = document.createElement('div');
+    el.className = 'guest' + (guest.golden ? ' golden' : '');
+    el.style.setProperty('--c', guest.color || '#C9A100');
+    el.innerHTML = '<div class="guest-halo"></div>' +
+      `<div class="guest-body">${Story.guestArt(guest)}</div>` +
+      `<div class="guest-hint">✨ ${escapeHTML(Data.get().story.labels.guestHint)}</div>`;
+    fx.appendChild(el);
+    guestNow = {
+      guest, el, t: 0, stay, state: 'float', sparkleIn: 0,
+      sx: dir > 0 ? -GUEST_SIZE * 0.6 : w + GUEST_SIZE * 0.6,
+      ex: dir > 0 ? w + GUEST_SIZE * 0.6 : -GUEST_SIZE * 0.6,
+      baseY: lo + Math.random() * (hi - lo),
+      x: 0, y: 0,
+    };
+    placeGuest(guestNow.sx, guestNow.baseY);
+    Sound.play('sparkle');
+  }
+
+  function placeGuest(x, y) {
+    guestNow.x = x;
+    guestNow.y = y;
+    guestNow.el.style.transform = `translate3d(${x - GUEST_SIZE / 2}px, ${y - GUEST_SIZE / 2}px, 0)`;
+  }
+
+  /** キラッと光る粒。big=true のときは大きく広がる */
+  function sparkle(x, y, big) {
+    const s = document.createElement('span');
+    s.className = 'sparkle' + (big ? ' big' : '');
+    s.textContent = Math.random() < 0.5 ? '✦' : '✧';
+    s.style.left = x + 'px';
+    s.style.top = y + 'px';
+    if (big) {
+      const a = Math.random() * Math.PI * 2, d = 60 + Math.random() * 70;
+      s.style.setProperty('--dx', Math.cos(a) * d + 'px');
+      s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+    }
+    fx.appendChild(s);
+    setTimeout(() => s.remove(), big ? 1100 : 900);
+  }
+
+  function meetGuest() {
+    const g = guestNow;
+    g.state = 'met';
+    Story.meetGuest(g.guest.id);
+    guestsMet.push(g.guest);
+    Sound.play('sparkle');
+    for (let i = 0; i < 18; i++) sparkle(g.x, g.y, true);
+    g.el.classList.add('met');
+    const L = Data.get().story.labels;
+    const msg = document.createElement('div');
+    msg.className = 'guest-thanks';
+    msg.style.setProperty('--c', g.guest.color || '#C9A100');
+    msg.innerHTML = `<b>${escapeHTML(Story.fill(L.guestThanks, { name: g.guest.name }))}</b>` +
+      `<span>🏅 ${escapeHTML(L.guestStamp)}</span>`;
+    fx.appendChild(msg);
+    setTimeout(() => msg.remove(), 2600);
+    g.el.animate([
+      { transform: g.el.style.transform, opacity: 1 },
+      { transform: `translate3d(${g.x - GUEST_SIZE / 2}px, ${g.y - GUEST_SIZE / 2 - 120}px, 0) scale(1.3)`, opacity: 0 },
+    ], { duration: 1400, easing: 'ease-in', fill: 'forwards' }).onfinish = () => g.el.remove();
+    guestNow = null;
+  }
+
+  /** ゲームが終わるとき:まだいるお客さまは、ふわっと消える */
+  function clearGuest() {
+    guestPlans = [];
+    if (!guestNow) return;
+    const el = guestNow.el;
+    el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: 'forwards' }).onfinish = () => el.remove();
+    guestNow = null;
+  }
+
   // ── 終了:煙がもくもく →「ボン!」→ チン! ─────────────────
   function finish() {
     playing = false;
@@ -949,6 +1072,7 @@ const Game = (() => {
     // こぼれている途中の食材は、やさしく器に戻す
     loose.slice().forEach(l => rescueLoose(l, true));
     clearSeagull();
+    clearGuest();
 
     showBig(finaleText, 'そこまで!', 0);
 
@@ -984,7 +1108,7 @@ const Game = (() => {
     later(3600, () => {
       finaleText.hidden = true;
       finaleText.classList.remove('boom');
-      if (onFinish) onFinish({ caught: Object.assign({}, caught), order, dish });
+      if (onFinish) onFinish({ caught: Object.assign({}, caught), order, dish, guests: guestsMet.slice() });
     });
   }
 
@@ -1053,6 +1177,12 @@ const Game = (() => {
   function debugForceEntry(mode) { forcedEntry = mode; }
   /** 動作確認用:すぐにカモメを呼ぶ */
   function debugSeagull() { if (!gull) nextGullAt = gameTime; }
+  /** 動作確認用:すぐに特別なお客さまを呼ぶ(Game.debugGuest() / Game.debugGuest('gold')) */
+  function debugGuest(id) {
+    if (!playing || guestNow) return;
+    const g = (id && Story.guests().find(x => x.id === id)) || Story.pickGuest();
+    if (g) guestPlans.unshift({ guest: g, at: gameTime });
+  }
 
-  return { init, start, stop, pelicanSay, debugSkip, debugState, debugForceEntry, debugSeagull };
+  return { init, start, stop, pelicanSay, debugSkip, debugState, debugForceEntry, debugSeagull, debugGuest };
 })();

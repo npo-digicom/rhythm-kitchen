@@ -201,6 +201,12 @@ const Sound = (() => {
       });
       [0.1, 0.45, 0.8].forEach(d => tone('sine', 520, t + d, 0.12, 0.25, 260));
     },
+    // 特別なお客さまの「キラキラーン」
+    sparkle() {
+      const t = getCtx().currentTime;
+      [1568, 2093, 2637, 3136, 2637, 3520].forEach((f, i) => tone('sine', f, t + i * 0.06, 0.6, 0.16));
+      [784, 1175].forEach((f, i) => tone('triangle', f, t + 0.3 + i * 0.12, 0.9, 0.18));
+    },
     // ペリカンの陽気な声「プップー」
     pelican() {
       const t = getCtx().currentTime;

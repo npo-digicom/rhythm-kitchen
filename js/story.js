@@ -5,6 +5,7 @@
  *   ・港のこばなし(完成画面で1つ)
  *   ・スタンプ(料理1回で1つ)と、本編のおはなし(スタンプ3つごとに1話)
  *   ・おはなしを読む画面(大きな文字)
+ *   ・特別なお客さま(ゲーム中にまれに現れる)
  * 文章はすべて data/story.json にあります。
  * 記録はブラウザ(localStorage)に保存します。保存できない環境でも遊べます。
  */
@@ -97,6 +98,81 @@ const Story = (() => {
     };
   }
 
+  // ── 特別なお客さま ──────────────────────────────────────
+  const hasMet = id => !!rec.guests[id];
+  const guests = () => st().guests;
+
+  /** 会ったことを記録する。初めてなら true */
+  function meetGuest(id) {
+    const first = !rec.guests[id];
+    if (first) rec.guests[id] = { first: new Date().toISOString().slice(0, 10), count: 0 };
+    rec.guests[id].count++;
+    save();
+    return first;
+  }
+
+  /**
+   * お客さまを1人選ぶ。出やすさ = story.json の weight
+   * × まだ会っていなければ settings の unmetFavor 倍。
+   */
+  function pickGuest(exclude) {
+    const favor = Math.max(1, Number(Data.get().settings.story.unmetFavor) || 1);
+    const pool = guests().filter(g => !(exclude || []).includes(g.id))
+      .map(g => ({ g, w: Math.max(0, Number(g.weight) || 0) * (hasMet(g.id) ? 1 : favor) }))
+      .filter(x => x.w > 0);
+    const total = pool.reduce((a, x) => a + x.w, 0);
+    if (total <= 0) return null;
+    let r = Math.random() * total;
+    for (const x of pool) { r -= x.w; if (r < 0) return x.g; }
+    return pool[pool.length - 1].g;
+  }
+
+  /**
+   * このゲームで来るお客さまと、来る時間を決める。
+   * 動作確認用:アドレスの最後に ?guest=1(毎回来る)や ?guest=gold(その人が毎回来る)。
+   */
+  function planGuests() {
+    const C = Data.get().settings.story;
+    const force = testParam('guest');
+    const max = Math.max(0, C.maxGuestsPerGame | 0);
+    const [a, b] = Array.isArray(C.guestAppearSec) ? C.guestAppearSec : [15, 65];
+    const plans = [];
+    for (let k = 0; k < (force ? Math.max(1, max) : max); k++) {
+      if (!force && !(Math.random() < Number(C.guestChance))) continue;
+      const forced = force && guests().find(g => g.id === force);
+      const g = forced || pickGuest(plans.map(p => p.guest.id));
+      if (!g) break;
+      const at = force && k === 0 ? 4 : a + Math.random() * Math.max(0, b - a);
+      plans.push({ guest: g, at });
+    }
+    return plans.sort((x, y) => x.at - y.at);
+  }
+
+  /** お客さまの絵。images/guest_<id>.png があれば画像、なければ絵文字(金色のペトロスは金色のペリカン) */
+  function guestArt(g) {
+    const dummy = g.golden
+      ? Art.pelicanTinted('#FFD54F', '#FFB300')
+      : `<span class="guest-emoji">${escapeHTML(g.emoji)}</span>`;
+    return Art.artHTML(g.image, dummy, 'guest-art' + (g.golden ? ' golden' : ''));
+  }
+
+  function guestItem(g) {
+    return {
+      readKey: 'g:' + g.id,
+      label: st().labels.guestLabel,
+      title: g.name,
+      text: g.text,
+      art: guestArt(g),
+      color: g.color,
+      guest: true,
+    };
+  }
+
+  // ── 動作確認用(アドレスの ?stamps=12 など) ──────────────
+  function testParam(name) {
+    try { return new URLSearchParams(location.search).get(name); } catch (e) { return null; }
+  }
+
   // ── 読む画面 ────────────────────────────────────────────
   let onReaderClose = null;
 
@@ -130,5 +206,6 @@ const Story = (() => {
     init, fill, nextKobanashi,
     stamps, stampEmoji, perChapter, chaptersOpen, addStamp, stampsUntilNext, isRead, chapterItem,
     openReader, closeReader,
+    guests, hasMet, meetGuest, pickGuest, planGuests, guestArt, guestItem,
   };
 })();
