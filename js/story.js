@@ -6,6 +6,7 @@
  *   ・スタンプ(料理1回で1つ)と、本編のおはなし(スタンプ3つごとに1話)
  *   ・おはなしを読む画面(大きな文字)
  *   ・特別なお客さま(ゲーム中にまれに現れる)
+ *   ・スタンプ帳の画面
  * 文章はすべて data/story.json にあります。
  * 記録はブラウザ(localStorage)に保存します。保存できない環境でも遊べます。
  */
@@ -24,6 +25,24 @@ const Story = (() => {
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
       if (saved && typeof saved === 'object') rec = Object.assign(blank(), saved);
     } catch (e) { /* 読めなければ空から */ }
+    applyTestParams();
+  }
+
+  /**
+   * 動作確認用。アドレスの最後に付けると記録を変えられます(report_story.md 参照)。
+   *   ?stamps=12      スタンプの数を12にする(本編4話まで開く)
+   *   ?guests=all     特別なお客さま6人に会ったことにする
+   *   ?reset=story    おはなしの記録を消す
+   */
+  function applyTestParams() {
+    const reset = testParam('reset');
+    if (reset === 'story' || reset === 'all') rec = blank();
+    const n = parseInt(testParam('stamps'), 10);
+    if (n >= 0) rec.stamps = n;
+    if (testParam('guests') === 'all') {
+      Data.get().story.guests.forEach(g => { if (!rec.guests[g.id]) rec.guests[g.id] = { first: 'test', count: 1 }; });
+    }
+    if (reset || n >= 0 || testParam('guests')) save();
   }
 
   function save() {
@@ -168,6 +187,116 @@ const Story = (() => {
     };
   }
 
+  // ── スタンプ帳 ──────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+
+  function characterArt(c) {
+    const kinds = {
+      pelicanPink: () => Art.pelicanTinted('#FFC6D5', '#F59AB4'),
+      pelican: () => Art.pelicanSVG(),
+      seagull: () => Art.seagullSVG(),
+    };
+    const dummy = kinds[c.art] ? kinds[c.art]() : `<span class="guest-emoji">${escapeHTML(c.emoji || '🐦')}</span>`;
+    return Art.artHTML(c.image || `images/character_${c.id}.png`, dummy, 'guest-art');
+  }
+
+  function renderBook() {
+    const L = st().labels;
+    const open = chaptersOpen();
+    $('book-title').textContent = L.stampBook;
+    $('book-characters-heading').textContent = L.charactersHeading;
+    $('book-stamps-heading').textContent = L.stampsHeading;
+    $('book-chapters-heading').textContent = L.chaptersHeading;
+    $('book-guests-heading').textContent = L.guestsHeading;
+    $('book-disclaimer').textContent = st().disclaimer;
+
+    // 登場する鳥たち(openAfterChapter があれば、その話が開くまで「?」)
+    const chars = $('book-characters');
+    chars.innerHTML = '';
+    st().characters.forEach(c => {
+      const li = document.createElement('li');
+      const locked = c.openAfterChapter && open < c.openAfterChapter;
+      li.className = 'book-char' + (locked ? ' locked' : '');
+      li.innerHTML = locked
+        ? `<div class="book-char-art unknown">?</div><div class="book-char-body">` +
+          `<p class="book-char-name">?</p><p class="book-char-text">${escapeHTML(L.lockedCharacter)}</p></div>`
+        : `<div class="book-char-art">${characterArt(c)}</div><div class="book-char-body">` +
+          `<p class="book-char-name">${escapeHTML(c.name)}<span class="book-char-kind">${escapeHTML(c.kind || '')}</span></p>` +
+          `<p class="book-char-text">${escapeHTML(c.text || '')}</p></div>`;
+      chars.appendChild(li);
+    });
+
+    // たまったスタンプ:本編が全部開くまでのマス(3つごとに話の番号)
+    const per = perChapter();
+    const slots = Math.max(per, st().chapters.length * per);
+    $('book-stamps-count').textContent = fill(L.stampsTotal, { n: rec.stamps });
+    const grid = $('book-stamps');
+    grid.innerHTML = '';
+    for (let i = 0; i < slots; i++) {
+      const li = document.createElement('li');
+      const on = i < rec.stamps;
+      li.className = 'stamp' + (on ? ' on' : '');
+      li.textContent = on ? stampEmoji(i) : '';
+      if ((i + 1) % per === 0) {
+        const b = document.createElement('span');
+        b.className = 'stamp-goal';
+        b.textContent = '📖' + ((i + 1) / per);
+        li.appendChild(b);
+      }
+      grid.appendChild(li);
+    }
+    const left = stampsUntilNext();
+    $('book-stamps-next').textContent = left ? fill(L.stampsUntilNext, { n: left }) : L.allChaptersOpen;
+
+    // 本編(まだの話は「?」)
+    const list = $('book-chapters');
+    list.innerHTML = '';
+    st().chapters.forEach((c, i) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const no = fill(L.chapterLabel, { n: i + 1 });
+      if (i < open) {
+        const item = chapterItem(i);
+        btn.className = 'book-chapter';
+        btn.innerHTML = `<span class="bc-no">${escapeHTML(no)}</span><span class="bc-title">${escapeHTML(c.title)}</span>` +
+          (isRead(item.readKey) ? '' : `<span class="bc-new">${escapeHTML(L.newBadge)}</span>`);
+        btn.addEventListener('click', () => { Sound.unlock(); openReader(item, renderBook); });
+      } else {
+        btn.className = 'book-chapter locked';
+        btn.disabled = true;
+        btn.innerHTML = `<span class="bc-no">${escapeHTML(no)}</span><span class="bc-title">?</span>` +
+          `<span class="bc-locked">${escapeHTML(L.lockedChapter)}</span>`;
+      }
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+
+    // 特別なお客さま(まだ会っていない人は「?」)
+    const gl = $('book-guests');
+    gl.innerHTML = '';
+    const met = guests().filter(g => hasMet(g.id)).length;
+    $('book-guests-count').textContent = fill(L.specialStamps, { n: met }) + ` / ${guests().length}`;
+    guests().forEach(g => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      if (hasMet(g.id)) {
+        const item = guestItem(g);
+        btn.className = 'zukan-cell book-guest';
+        btn.style.setProperty('--c', g.color);
+        btn.innerHTML = `<span class="z-icon">${guestArt(g)}</span><span class="z-name">${escapeHTML(g.name)}</span>`;
+        btn.addEventListener('click', () => { Sound.unlock(); openReader(item); });
+      } else {
+        btn.className = 'zukan-cell unknown';
+        btn.disabled = true;
+        btn.innerHTML = `<span class="z-icon">?</span><span class="z-name">${escapeHTML(L.unknownGuest)}</span>`;
+      }
+      li.appendChild(btn);
+      gl.appendChild(li);
+    });
+  }
+
   // ── 動作確認用(アドレスの ?stamps=12 など) ──────────────
   function testParam(name) {
     try { return new URLSearchParams(location.search).get(name); } catch (e) { return null; }
@@ -207,5 +336,6 @@ const Story = (() => {
     stamps, stampEmoji, perChapter, chaptersOpen, addStamp, stampsUntilNext, isRead, chapterItem,
     openReader, closeReader,
     guests, hasMet, meetGuest, pickGuest, planGuests, guestArt, guestItem,
+    renderBook,
   };
 })();

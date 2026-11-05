@@ -1114,7 +1114,7 @@ html, body {
 }
 
 /* ── ④ 図鑑 ───────────────────────────────────────────────── */
-#screen-zukan { background: rgba(255, 244, 226, 0.94); }
+#screen-zukan, #screen-book { background: rgba(255, 244, 226, 0.94); }
 .zukan-header {
   display: flex;
   align-items: center;
@@ -1172,6 +1172,126 @@ html, body {
   color: #6B5A42;
 }
 .zukan-cell.unknown .z-icon { font-size: 2.6rem; font-weight: 900; }
+
+/* ── ⑤ スタンプ帳 ─────────────────────────────────────────── */
+.btn-pair { display: flex; gap: 10px; width: 100%; }
+.btn-pair .btn { flex: 1; min-width: 0; font-size: 1.1rem; letter-spacing: 0.02em; padding: 0 6px; }
+.book-inner { display: flex; flex-direction: column; gap: 22px; }
+.book-section { display: flex; flex-direction: column; gap: 10px; }
+.book-heading {
+  font-size: 1.3rem;
+  font-weight: 900;
+  border-left: 8px solid var(--orange);
+  padding-left: 10px;
+  line-height: 1.4;
+}
+.book-characters { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.book-char {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #fff;
+  border: 3px solid var(--line);
+  border-radius: 20px;
+  padding: 12px;
+}
+.book-char-art { width: 64px; height: 64px; flex-shrink: 0; }
+.book-char-art .guest-emoji { font-size: 3.2rem; }
+.book-char-art.unknown, .book-char.locked .book-char-art {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.6rem; font-weight: 900; color: #6B5A42;
+  background: #EDE4D6; border: 3px dashed #9C8A70; border-radius: 50%;
+}
+.book-char.locked { background: #F6F0E6; border-style: dashed; }
+.book-char-name { font-size: 1.25rem; font-weight: 900; line-height: 1.4; }
+.book-char-kind {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+  line-height: 1.3;
+}
+.book-char-text { font-size: 1.1rem; line-height: 1.8; font-weight: 600; }
+.book-stamps-count { font-size: 1.15rem; font-weight: 900; text-align: center; }
+.book-stamps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px 6px;
+  background: #fff;
+  border: 3px solid var(--line);
+  border-radius: 20px;
+  padding: 14px 10px;
+}
+.book-stamps .stamp { position: relative; width: 100%; height: auto; aspect-ratio: 1; font-size: 1.5rem; border-width: 3px; }
+.stamp-goal {
+  position: absolute;
+  right: -6px;
+  bottom: -8px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.2;
+  background: #fff;
+  border: 2px solid var(--orange);
+  border-radius: 999px;
+  padding: 0 3px;
+  transform: rotate(8deg);
+}
+.book-stamps .stamp.on .stamp-goal { transform: rotate(16deg); }
+.book-note { font-size: 1.05rem; font-weight: 800; color: var(--ink-soft); text-align: center; }
+.book-chapters { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.book-chapter {
+  width: 100%;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 3px solid #2E7DA6;
+  border-radius: 18px;
+  background: #fff;
+  font: inherit;
+  color: var(--ink);
+  padding: 8px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.book-chapter:active { transform: scale(0.97); }
+.book-chapter:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px; }
+.bc-no {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #fff;
+  background: #2E7DA6;
+  border-radius: 999px;
+  padding: 0 10px;
+}
+.bc-title { flex: 1; font-size: 1.2rem; font-weight: 900; line-height: 1.4; }
+.bc-new {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #fff;
+  background: #E53935;
+  border-radius: 999px;
+  padding: 0 8px;
+}
+.book-chapter.locked { background: #EDE4D6; border: 3px dashed #9C8A70; cursor: default; color: #6B5A42; }
+.book-chapter.locked .bc-no { background: #9C8A70; }
+.bc-locked { font-size: 0.9rem; font-weight: 800; }
+.book-guest .z-icon { width: 64px; height: 64px; }
+.book-guest .guest-emoji { font-size: 2.8rem; }
+.book-disclaimer {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: #fff;
+  border-top: 3px dashed var(--line);
+  border-bottom: 3px dashed var(--line);
+  padding: 12px 6px;
+  margin-top: 4px;
+  text-align: center;
+}
 
 .modal {
   position: absolute;

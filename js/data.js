@@ -108,6 +108,8 @@ const Data = (() => {
         charactersHeading: '登場する鳥たち', chaptersHeading: '本編のおはなし', guestsHeading: '特別なお客さま',
         guestThanks: '{name}が来てくれた!', guestStamp: '特別なスタンプをもらったよ', guestHint: 'タップしてみて',
         chapterLabel: '第{n}話', guestLabel: '特別なお客さま', close: 'とじる',
+        stampsTotal: 'ぜんぶで {n}こ', specialStamps: '特別なスタンプ {n}こ', lockedChapter: 'まだ届いていません',
+        lockedCharacter: 'おはなしが進むと、わかります', unknownGuest: 'まだ', newBadge: 'NEW',
       }, st.labels),
       characters: arr(st.characters).filter(c => c && c.name),
       chapters: arr(st.chapters).filter(c => c && (c.title || c.text))

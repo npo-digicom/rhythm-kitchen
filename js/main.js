@@ -50,6 +50,9 @@ const App = (() => {
     onPress('btn-zukan-from-start', openZukan);
     onPress('btn-zukan-from-complete', openZukan);
     onPress('btn-zukan-back', () => { Zukan.closeDetail(); show(beforeZukan); });
+    onPress('btn-book-from-start', openBook);
+    onPress('btn-book-from-complete', openBook);
+    onPress('btn-book-back', () => { Story.closeReader(); show(beforeZukan); });
     onPress('btn-zukan-close', () => Zukan.closeDetail());
     $('zukan-detail').addEventListener('click', e => {
       if (e.target.id === 'zukan-detail') Zukan.closeDetail();
@@ -89,6 +92,12 @@ const App = (() => {
     beforeZukan = current;
     Zukan.render();
     show('zukan');
+  }
+
+  function openBook() {
+    beforeZukan = current;
+    Story.renderBook();
+    show('book');
   }
 
   // ── 完成画面 ────────────────────────────────────────────

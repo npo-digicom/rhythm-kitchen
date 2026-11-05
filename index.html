@@ -30,7 +30,10 @@
         <p class="start-note">にがしても大丈夫。またやってきます。</p>
 
         <button id="btn-start" class="btn btn-primary" type="button" disabled>じゅんび中…</button>
-        <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+        <div class="btn-pair">
+          <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+          <button id="btn-book-from-start" class="btn btn-secondary" type="button">📒 スタンプ帳</button>
+        </div>
         <p id="load-error" class="load-error" hidden></p>
       </div>
     </div>
@@ -127,7 +130,10 @@
         </div>
 
         <button id="btn-retry" class="btn btn-primary" type="button">もう一度遊ぶ</button>
-        <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+        <div class="btn-pair">
+          <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+          <button id="btn-book-from-complete" class="btn btn-secondary" type="button">📒 スタンプ帳</button>
+        </div>
       </div>
     </div>
     <div id="celebrate-layer" aria-hidden="true"></div>
@@ -151,6 +157,38 @@
         <p id="zukan-detail-motion" class="detail-motion"></p>
         <p id="zukan-detail-text" class="detail-text"></p>
         <button id="btn-zukan-close" class="btn btn-primary" type="button">とじる</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ スタンプ帳 -->
+  <section id="screen-book" class="screen" aria-label="スタンプ帳">
+    <header class="zukan-header">
+      <button id="btn-book-back" class="btn-back" type="button">← もどる</button>
+      <h2 id="book-title" class="zukan-title">スタンプ帳</h2>
+    </header>
+    <div class="scroll">
+      <div class="book-inner">
+        <section class="book-section">
+          <h3 id="book-characters-heading" class="book-heading">登場する鳥たち</h3>
+          <ul id="book-characters" class="book-characters"></ul>
+        </section>
+        <section class="book-section">
+          <h3 id="book-stamps-heading" class="book-heading">たまったスタンプ</h3>
+          <p id="book-stamps-count" class="book-stamps-count"></p>
+          <ul id="book-stamps" class="book-stamps"></ul>
+          <p id="book-stamps-next" class="book-note"></p>
+        </section>
+        <section class="book-section">
+          <h3 id="book-chapters-heading" class="book-heading">本編のおはなし</h3>
+          <ul id="book-chapters" class="book-chapters"></ul>
+        </section>
+        <section class="book-section">
+          <h3 id="book-guests-heading" class="book-heading">特別なお客さま</h3>
+          <p id="book-guests-count" class="book-stamps-count"></p>
+          <ul id="book-guests" class="zukan-grid book-guests"></ul>
+        </section>
+        <p id="book-disclaimer" class="book-disclaimer"></p>
       </div>
     </div>
   </section>

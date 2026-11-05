@@ -20,6 +20,12 @@
     "guestHint": "タップしてみて",
     "chapterLabel": "第{n}話",
     "guestLabel": "特別なお客さま",
+    "stampsTotal": "ぜんぶで {n}こ",
+    "specialStamps": "特別なスタンプ {n}こ",
+    "lockedChapter": "まだ届いていません",
+    "lockedCharacter": "おはなしが進むと、わかります",
+    "unknownGuest": "まだ",
+    "newBadge": "NEW",
     "close": "とじる"
   },
 
@@ -29,6 +35,8 @@
       "name": "ペトロス",
       "kind": "ピンクのペリカン",
       "emoji": "🦩",
+      "_memo_art": "画像が無いときの絵。images/character_<id>.png を置くとそちらが出ます",
+      "art": "pelicanPink",
       "text": "嵐の夜、ミコノス島の浜に打ち上げられた若いペリカンです。漁師のテオおじいさんに助けられ、港の人気者になりました。料理が大好きで、魚屋さんの前で味見をしては叱られています。毎朝、海の向こうをじっと見ていました。"
     },
     {
@@ -36,6 +44,7 @@
       "name": "イリニ",
       "kind": "白いペリカン",
       "emoji": "🕊️",
+      "art": "pelican",
       "text": "嵐の前、ペトロスといつも一緒に飛んでいました。嵐の夜にはぐれたきりです。名前はギリシャ語で「平和」という意味です。",
       "_memo_openAfterChapter": "この話数が開くまで「?」になります",
       "openAfterChapter": 4
@@ -45,6 +54,7 @@
       "name": "ヤニス",
       "kind": "かもめ",
       "emoji": "🐦",
+      "art": "seagull",
       "text": "港いちばんのいたずら者で、食いしん坊です。ペトロスのザルから食材をくすねては逃げていきます。でも本当は……。"
     }
   ],
