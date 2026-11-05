@@ -10,6 +10,7 @@ const Data = (() => {
     ingredients: 'data/ingredients.json',
     dishes:      'data/dishes.json',
     fantasy:     'data/fantasy.json',
+    vessels:     'data/vessels.json',
   };
 
   const store = {
@@ -20,6 +21,7 @@ const Data = (() => {
     dishes: [],
     portions: [],
     fantasy: null,
+    vessels: null,
   };
 
   async function fetchJSON(url) {
@@ -75,6 +77,10 @@ const Data = (() => {
     store.dishes = raw.dishes.dishes || [];
     store.portions = (raw.dishes.portions || []).slice().sort((a, b) => a.minCount - b.minCount);
     store.fantasy = raw.fantasy;
+    store.vessels = Object.assign({
+      start: 'zaru', arriveMessage: '{vessel}がやってきた!', changeMessage: 'やっぱり{vessel}にしよう!',
+      vessels: {}, dishToVessel: {},
+    }, raw.vessels);
     return store;
   }
 

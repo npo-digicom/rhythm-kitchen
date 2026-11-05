@@ -341,7 +341,7 @@ html, body {
   25%      { transform: translateX(calc(-50% - 4px)) rotate(-1.5deg); }
   75%      { transform: translateX(calc(-50% + 4px)) rotate(1.5deg); }
 }
-.zaru {
+.vessel-art {
   position: absolute;
   left: 0;
   right: 0;
@@ -350,6 +350,7 @@ html, body {
   height: 92px;
   filter: drop-shadow(0 6px 6px rgba(40, 20, 0, 0.3));
 }
+.vessel-art .art > img { object-fit: contain; object-position: center bottom; }
 #pile {
   position: absolute;
   left: 0;
@@ -426,6 +427,13 @@ html, body {
 @keyframes big-in {
   from { transform: scale(0.3); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
+}
+.msg-text {
+  top: 30%;
+  padding: 0 16px;
+  font-size: 2.1rem;
+  line-height: 1.35;
+  -webkit-text-stroke: 2px var(--ink);
 }
 #finale-text.boom {
   font-size: 5rem;
@@ -662,26 +670,22 @@ html, body {
   align-items: flex-end;
   justify-content: center;
 }
-.vessel-dish {
+.vessel-dish-art {
   position: absolute;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  background: #fff;
-  border: 5px solid var(--wood);
-  box-shadow: 0 8px 0 rgba(60, 30, 0, 0.18);
+  filter: drop-shadow(0 6px 4px rgba(60, 30, 0, 0.2));
 }
-.vessel.kobachi  .vessel-dish { width: 130px; height: 64px; border-radius: 10px 10px 65px 65px; border-top-width: 6px; }
-.vessel.hitosara .vessel-dish { width: 220px; height: 40px; border-radius: 50%; }
-.vessel.oozara   .vessel-dish { width: 276px; height: 48px; border-radius: 50%; }
+.vessel-dish-art .art > img { object-position: center bottom; }
 .vessel-food {
   position: absolute;
   left: 50%;
   line-height: 1;
 }
-.vessel.kobachi  { width: 130px; height: 140px; }
-.vessel.hitosara { width: 220px; height: 170px; }
-.vessel.oozara   { width: 276px; height: 225px; }
+.vessel.kobachi  { width: 170px; height: 150px; }
+.vessel.hitosara { width: 226px; height: 175px; }
+.vessel.oozara   { width: 280px; height: 230px; }
 
 .portion-badge {
   font-size: 1.3rem;

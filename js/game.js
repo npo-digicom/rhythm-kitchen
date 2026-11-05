@@ -20,7 +20,7 @@ const Game = (() => {
   const PILE_DOM_MAX = 70;     // ザルに描く食材の最大数(多すぎると重くなるため)
 
   let S;                       // 設定(settings.json)
-  let field, layer, fx, basket, pile, timerFill, catchMsg, startCount, finaleText;
+  let field, layer, fx, basket, pile, timerFill, catchMsg, startCount, finaleText, msgText;
 
   // 状態
   let playing = false;
@@ -34,6 +34,9 @@ const Game = (() => {
   let lastSpawnAt = -99;
   let comeback = [];           // にがした食材(しばらくしてまた出す。回数の上限の中だけ)
   let phaseIndex = -1;         // いまの区間(settings.json の phases)
+  let vesselId = 'zaru';       // いまの器
+  let vesselDish = null;       // 器を決めたときの料理
+  let pileBottom = 70;         // 器の底から食材を積み始める高さ
   let caught = {};             // { id: 個数 }
   let pileCount = 0;
   let onFinish = null;
@@ -54,6 +57,7 @@ const Game = (() => {
     catchMsg   = document.getElementById('catch-msg');
     startCount = document.getElementById('start-count');
     finaleText = document.getElementById('finale-text');
+    msgText    = document.getElementById('msg-text');
     field.addEventListener('pointerdown', onTap);
     document.getElementById('btn-order-ok').addEventListener('click', () => {
       Sound.unlock();
@@ -99,6 +103,8 @@ const Game = (() => {
   }
 
   function resetField() {
+    setVessel(Data.get().vessels.start || 'zaru');
+    vesselDish = null;
     layer.innerHTML = '';
     fx.innerHTML = '';
     pile.innerHTML = '';
@@ -218,7 +224,65 @@ const Game = (() => {
   }
 
   function onPhaseStart(ph) {
-    if (ph.message) showBig(startCount, ph.message, 1600);
+    if (ph.message) showBig(msgText, ph.message, 1800);
+    // 終盤の始め:それまでの食材にいちばん近い料理の器がやってくる
+    if (ph.vesselChange) {
+      vesselDish = Dishes.choose(caught, order && order.id);
+      changeVessel(vesselFor(vesselDish), Data.get().vessels.arriveMessage);
+    }
+  }
+
+  // ── 器 ──────────────────────────────────────────────────
+  function vesselFor(dish) {
+    const V = Data.get().vessels;
+    return (dish && V.dishToVessel[dish.id]) || V.start || 'zaru';
+  }
+  function vesselInfo(id) { return Data.get().vessels.vessels[id] || {}; }
+
+  function setVessel(id) {
+    vesselId = id;
+    document.getElementById('vessel-art').innerHTML = Art.vessel(id);
+    const pb = vesselInfo(id).pileBottom;
+    pileBottom = pb == null ? 70 : pb;
+    pile.style.bottom = pileBottom + 'px';
+  }
+
+  /**
+   * 器を入れ替える:食材がふわっと持ち上がり、古い器が去って新しい器が来て、
+   * 食材がそこへ移る。done は入れ替え終わりに呼ばれる。
+   */
+  function changeVessel(id, message, done) {
+    if (id === vesselId) { if (done) done(); return; }
+    const art = document.getElementById('vessel-art');
+    const label = vesselInfo(id).label || '器';
+    if (message) showBig(msgText, message.replace('{vessel}', label), 2000);
+    Sound.play('vessel');
+    const oldBottom = pileBottom;
+    // 食材は持ち上がる
+    pile.animate([
+      { transform: 'translateY(0)' },
+      { transform: 'translateY(-70px)', offset: 0.35 },
+      { transform: 'translateY(-70px)', offset: 0.65 },
+      { transform: 'translateY(0)' },
+    ], { duration: 1400, easing: 'ease-in-out' });
+    // 古い器は左へ、新しい器は右から
+    art.animate([
+      { transform: 'translateX(0)', opacity: 1 },
+      { transform: 'translateX(-130%) rotate(-8deg)', opacity: 0 },
+    ], { duration: 520, easing: 'ease-in' }).onfinish = () => {
+      setVessel(id);
+      // 積む高さが変わったぶん、持ち上がった位置からそのまま下りるように
+      pile.animate([{ marginBottom: (oldBottom - pileBottom) + 'px' }, { marginBottom: '0px' }],
+        { duration: 600, easing: 'ease-out' });
+      art.animate([
+        { transform: 'translateX(130%) rotate(8deg)', opacity: 0 },
+        { transform: 'translateX(-4%) rotate(-2deg)', opacity: 1, offset: 0.75 },
+        { transform: 'translateX(0)', opacity: 1 },
+      ], { duration: 620, easing: 'ease-out' }).onfinish = () => {
+        Sound.playDrop();
+        if (done) done();
+      };
+    };
   }
 
   // 区切りの位置に、時間のバーへ目印をつける
@@ -426,7 +490,7 @@ const Game = (() => {
     return {
       slot,
       x: br.left - fr.left + br.width / 2 + slot.sx,
-      y: br.bottom - fr.top - 70 - slot.sy - 22,
+      y: br.bottom - fr.top - pileBottom - slot.sy - 22,
     };
   }
 
@@ -458,14 +522,27 @@ const Game = (() => {
 
     showBig(finaleText, 'そこまで!', 0);
 
-    const later = (ms, fn) => setTimeout(fn, ms);
-    later(1300, () => {
+    // 最後に料理を決める。器を決めたあとで料理が変わったら、完成の前に器を入れ替える
+    const dish = Dishes.choose(caught, order && order.id);
+    setTimeout(() => {
       finaleText.hidden = true;
+      if (vesselDish && vesselFor(dish) !== vesselId) {
+        changeVessel(vesselFor(dish), Data.get().vessels.changeMessage, () => setTimeout(() => cook(dish), 500));
+      } else {
+        cook(dish);
+      }
+    }, 1300);
+  }
+
+  // 煙がもくもく →「ボン!」→ チン! → 完成画面へ
+  function cook(dish) {
+    const later = (ms, fn) => setTimeout(fn, ms);
+    later(0, () => {
       basket.classList.add('shake');
       Sound.playSmoke();
       smokePuffs();
     });
-    later(3000, () => {
+    later(1700, () => {
       basket.classList.remove('shake');
       pile.classList.add('gone');
       flash();
@@ -473,11 +550,11 @@ const Game = (() => {
       showBig(finaleText, 'ボン!', 0);
       Sound.playPop();
     });
-    later(3800, () => Sound.playDing());
-    later(4900, () => {
+    later(2500, () => Sound.playDing());
+    later(3600, () => {
       finaleText.hidden = true;
       finaleText.classList.remove('boom');
-      if (onFinish) onFinish({ caught: Object.assign({}, caught), order });
+      if (onFinish) onFinish({ caught: Object.assign({}, caught), order, dish });
     });
   }
 

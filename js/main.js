@@ -230,7 +230,14 @@ const App = (() => {
     v.className = 'vessel ' + (portion.id in counts ? portion.id : 'hitosara');
     v.setAttribute('role', 'img');
     v.setAttribute('aria-label', dish.name + '(' + portion.label + ')');
-    v.innerHTML = '<div class="vessel-dish"></div>';
+    // 器は料理ごと(data/vessels.json の dishToVessel)。盛り付けで大きさが変わる
+    const V = Data.get().vessels;
+    const vid = V.dishToVessel[dish.id] || V.start || 'zaru';
+    const widths = { kobachi: 170, hitosara: 226, oozara: 280 };
+    const w = widths[v.className.split(' ')[1]];
+    const artH = Math.round(w * 0.42);
+    const pb = (V.vessels[vid] || {}).pileBottom;
+    v.innerHTML = `<div class="vessel-dish-art" style="width:${w}px;height:${artH}px">${Art.vessel(vid)}</div>`;
 
     // 下の段から山のように積む
     const fontSize = portion.id === 'kobachi' ? 40 : portion.id === 'oozara' ? 46 : 44;
@@ -238,7 +245,7 @@ const App = (() => {
     let left = n, cap = portion.id === 'oozara' ? 5 : portion.id === 'hitosara' ? 4 : 3;
     while (left > 0) { const k = Math.min(cap, left); rows.push(k); left -= k; cap = Math.max(1, cap - 1); }
     let idx = 0;
-    const baseBottom = portion.id === 'kobachi' ? 34 : 22;
+    const baseBottom = Math.round(artH * ((pb == null ? 70 : pb) / 92) * 0.8);
     rows.forEach((k, row) => {
       for (let i = 0; i < k; i++) {
         const s = document.createElement('span');

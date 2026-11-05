@@ -1,0 +1,22 @@
+{
+  "_memo": "器の設定です。vessels は器の一覧、dishToVessel は「料理 → 器」の対応です。image の画像が無ければダミーの絵が出ます。pileBottom は器の底から食材を積み始める高さ(px)です。",
+  "start": "zaru",
+  "arriveMessage": "{vessel}がやってきた!",
+  "changeMessage": "やっぱり{vessel}にしよう!",
+  "vessels": {
+    "zaru":           { "label": "ザル",                     "image": "images/vessel_zaru.png",           "pileBottom": 70 },
+    "donburi":        { "label": "どんぶり",                 "image": "images/vessel_donburi.png",        "pileBottom": 66 },
+    "paella_pan":     { "label": "パエリャ用のフライパン",   "image": "images/vessel_paella_pan.png",     "pileBottom": 48 },
+    "salad_bowl":     { "label": "サラダボウル",             "image": "images/vessel_salad_bowl.png",     "pileBottom": 66 },
+    "flower_platter": { "label": "花柄の大皿",               "image": "images/vessel_flower_platter.png", "pileBottom": 42 },
+    "tray_plates":    { "label": "お盆にのった小皿",         "image": "images/vessel_tray_plates.png",    "pileBottom": 42 }
+  },
+  "dishToVessel": {
+    "kaisendon":   "donburi",
+    "bibimbap":    "paella_pan",
+    "greek_salad": "salad_bowl",
+    "greek_oven":  "flower_platter",
+    "focaccia":    "flower_platter",
+    "dakos":       "tray_plates"
+  }
+}
