@@ -30,7 +30,10 @@
         <p class="start-note">にがしても大丈夫。またやってきます。</p>
 
         <button id="btn-start" class="btn btn-primary" type="button" disabled>じゅんび中…</button>
-        <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+        <div class="btn-pair">
+          <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+          <button id="btn-book-from-start" class="btn btn-secondary" type="button">📒 スタンプ帳</button>
+        </div>
         <p id="load-error" class="load-error" hidden></p>
       </div>
     </div>
@@ -97,6 +100,15 @@
         <p id="portion-badge" class="portion-badge"></p>
         <p id="portion-message" class="portion-message"></p>
 
+        <!-- 新しいおはなしの知らせ(タップで読む) -->
+        <div id="story-notices" class="story-notices"></div>
+
+        <div id="stamp-card" class="card stamp-card">
+          <h3 id="stamp-card-title" class="card-title">たまったスタンプ</h3>
+          <div id="stamp-row" class="stamp-row"></div>
+          <p id="stamp-card-text" class="stamp-card-text"></p>
+        </div>
+
         <div class="card caught-card">
           <h3 class="card-title">つかまえた食材</h3>
           <ul id="caught-list" class="caught-list"></ul>
@@ -111,17 +123,17 @@
           <ol id="recipe-steps" class="recipe-steps"></ol>
         </div>
 
-        <div class="card fantasy-card">
-          <h3 id="fantasy-heading" class="card-title fantasy-heading">🌈 空想レシピ</h3>
-          <p id="fantasy-notice" class="fantasy-notice"></p>
-          <p id="fantasy-title" class="fantasy-title"></p>
-          <ol id="fantasy-steps" class="fantasy-steps"></ol>
-          <p id="fantasy-comment" class="fantasy-comment"></p>
-          <button id="btn-fantasy" class="btn btn-fantasy" type="button">🔄 新しいレシピを作る</button>
+        <div class="card koba-card">
+          <h3 id="koba-heading" class="card-title koba-heading">⚓ 港のこばなし</h3>
+          <p id="koba-text" class="koba-text"></p>
+          <button id="btn-koba" class="btn btn-koba" type="button">もうひとつ、おはなし</button>
         </div>
 
         <button id="btn-retry" class="btn btn-primary" type="button">もう一度遊ぶ</button>
-        <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+        <div class="btn-pair">
+          <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+          <button id="btn-book-from-complete" class="btn btn-secondary" type="button">📒 スタンプ帳</button>
+        </div>
       </div>
     </div>
     <div id="celebrate-layer" aria-hidden="true"></div>
@@ -149,6 +161,49 @@
     </div>
   </section>
 
+  <!-- ⑤ スタンプ帳 -->
+  <section id="screen-book" class="screen" aria-label="スタンプ帳">
+    <header class="zukan-header">
+      <button id="btn-book-back" class="btn-back" type="button">← もどる</button>
+      <h2 id="book-title" class="zukan-title">スタンプ帳</h2>
+    </header>
+    <div class="scroll">
+      <div class="book-inner">
+        <section class="book-section">
+          <h3 id="book-characters-heading" class="book-heading">登場する鳥たち</h3>
+          <ul id="book-characters" class="book-characters"></ul>
+        </section>
+        <section class="book-section">
+          <h3 id="book-stamps-heading" class="book-heading">たまったスタンプ</h3>
+          <p id="book-stamps-count" class="book-stamps-count"></p>
+          <ul id="book-stamps" class="book-stamps"></ul>
+          <p id="book-stamps-next" class="book-note"></p>
+        </section>
+        <section class="book-section">
+          <h3 id="book-chapters-heading" class="book-heading">本編のおはなし</h3>
+          <ul id="book-chapters" class="book-chapters"></ul>
+        </section>
+        <section class="book-section">
+          <h3 id="book-guests-heading" class="book-heading">特別なお客さま</h3>
+          <p id="book-guests-count" class="book-stamps-count"></p>
+          <ul id="book-guests" class="zukan-grid book-guests"></ul>
+        </section>
+        <p id="book-disclaimer" class="book-disclaimer"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- おはなしを読む画面(どの画面からでも開く) -->
+  <div id="reader" class="modal reader" hidden role="dialog" aria-modal="true" aria-labelledby="reader-title">
+    <div class="modal-card reader-card">
+      <p id="reader-label" class="reader-label"></p>
+      <div id="reader-art" class="reader-art"></div>
+      <h3 id="reader-title" class="reader-title"></h3>
+      <p id="reader-text" class="reader-text"></p>
+      <button id="btn-reader-close" class="btn btn-primary" type="button">とじる</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="js/audio.js"></script>
@@ -156,6 +211,7 @@
 <script src="js/art.js"></script>
 <script src="js/motions.js"></script>
 <script src="js/zukan.js"></script>
+<script src="js/story.js"></script>
 <script src="js/dishes.js"></script>
 <script src="js/game.js"></script>
 <script src="js/main.js"></script>
