@@ -40,11 +40,19 @@ const Data = (() => {
 
     store.settings = Object.assign({
       gameSeconds: 90, bpm: 80, beatSound: true, bgm: {}, speedScale: 1,
-      maxOnScreenStart: 2, maxOnScreenEnd: 4, spawnEveryBeats: 2,
+      phases: [
+        { id: 'early', startSec: 0, maxOnScreen: 2, spawnEveryBeats: 3, speed: 0.85 },
+        { id: 'middle', startSec: 30, maxOnScreen: 4, spawnEveryBeats: 2, speed: 1.15 },
+        { id: 'final', startSec: 60, maxOnScreen: 3, spawnEveryBeats: 2, speed: 1, vesselChange: true, seagulls: true },
+      ],
+      appearance: {},
       respawnDelaySec: 4, stopSpawningBeforeEndSec: 4,
       zukanStorageKey: 'rhythmKitchen.zukan.v1',
       pelican: {}, images: {}, sounds: {},
     }, raw.settings);
+    store.settings.appearance = Object.assign({ defaultMax: 2 }, store.settings.appearance);
+    store.settings.phases = store.settings.phases.slice().sort((a, b) => a.startSec - b.startSec)
+      .map(ph => Object.assign({ maxOnScreen: 3, spawnEveryBeats: 2, speed: 1, message: '' }, ph));
     store.settings.pelican = Object.assign({
       ask: '今日は{dish}が食べたいな', match: '注文どおり!ありがとう!', other: 'これもおいしそう!',
       orderFavor: 1.6,

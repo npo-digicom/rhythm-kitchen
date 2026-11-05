@@ -10,9 +10,43 @@
     "beatSoundWithBgm": false
   },
   "speedScale": 1.0,
-  "maxOnScreenStart": 2,
-  "maxOnScreenEnd": 4,
-  "spawnEveryBeats": 2,
+  "_memo_phases": "90秒を3つに分けます。startSec 秒から次の区切りまでがその区間。maxOnScreen=同時に出る数、spawnEveryBeats=何拍ごとに出すか、speed=速さ(1が基本)。vesselChange=区間の始めにザルが料理の器に変わる、seagulls=カモメが来る。",
+  "phases": [
+    {
+      "id": "early",
+      "label": "前半",
+      "startSec": 0,
+      "maxOnScreen": 2,
+      "spawnEveryBeats": 3,
+      "speed": 0.85,
+      "message": ""
+    },
+    {
+      "id": "middle",
+      "label": "中盤",
+      "startSec": 30,
+      "maxOnScreen": 4,
+      "spawnEveryBeats": 2,
+      "speed": 1.15,
+      "message": "にぎやかになってきた!"
+    },
+    {
+      "id": "final",
+      "label": "終盤",
+      "startSec": 60,
+      "maxOnScreen": 3,
+      "spawnEveryBeats": 2,
+      "speed": 1.0,
+      "message": "",
+      "vesselChange": true,
+      "seagulls": true
+    }
+  ],
+  "appearance": {
+    "_memo": "同じ食材が出てくる回数の上限。食材ごとに ingredients.json の maxAppear で変えられます。書いていない食材は defaultMax 回。にがした食材がまた出てくるのも、この回数の中だけです。 pacing=true のとき、残りの回数が終わりまで持つように出すペースをならします。",
+    "defaultMax": 2,
+    "pacing": true
+  },
   "respawnDelaySec": 4,
   "stopSpawningBeforeEndSec": 4,
   "zukanStorageKey": "rhythmKitchen.zukan.v1",

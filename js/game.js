@@ -29,8 +29,11 @@ const Game = (() => {
   let gameTime = 0;
   let lastBeat = -1;
   let active = [];             // 画面にいる食材
-  let deck = [];               // 次に出す食材の山札
-  let comeback = [];           // にがした食材(しばらくしてまた出す)
+  let appeared = {};           // { id: 出てきた回数 }(上限 maxAppear まで)
+  let lastSpawnId = null;
+  let lastSpawnAt = -99;
+  let comeback = [];           // にがした食材(しばらくしてまた出す。回数の上限の中だけ)
+  let phaseIndex = -1;         // いまの区間(settings.json の phases)
   let caught = {};             // { id: 個数 }
   let pileCount = 0;
   let onFinish = null;
@@ -107,12 +110,16 @@ const Game = (() => {
     document.getElementById('order-chip-pelican').innerHTML = Art.pelican();
     document.getElementById('order-chip-name').textContent = order.name;
     document.getElementById('order-chip').hidden = false;
+    drawTimerMarks();
     playing = true;
     gameTime = 0;
     lastBeat = -1;
     active = [];
-    deck = [];
+    appeared = {};
+    lastSpawnId = null;
+    lastSpawnAt = -99;
     comeback = [];
+    phaseIndex = -1;
     caught = {};
     pileCount = 0;
     layer.innerHTML = '';
@@ -154,6 +161,8 @@ const Game = (() => {
     const remain = Math.max(0, 1 - gameTime / S.gameSeconds);
     timerFill.style.transform = `scaleX(${remain})`;
 
+    updatePhase();
+
     const beatSec = 60 / S.bpm;
     const beat = Math.floor(gameTime / beatSec);
     if (beat > lastBeat) {
@@ -176,47 +185,105 @@ const Game = (() => {
     void basket.offsetWidth;
     basket.classList.add('beat');
 
-    const every = Math.max(1, S.spawnEveryBeats | 0);
+    const ph = phase();
+    const every = Math.max(1, ph.spawnEveryBeats | 0);
     const spawnUntil = S.gameSeconds - S.stopSpawningBeforeEndSec;
     if (beat >= 2 && beat % every === 0 && gameTime < spawnUntil) {
-      const p = gameTime / S.gameSeconds;
-      const max = Math.round(S.maxOnScreenStart + (S.maxOnScreenEnd - S.maxOnScreenStart) * p);
-      if (active.length < max) spawn();
+      if (active.length < ph.maxOnScreen && paceAllows(spawnUntil)) spawn();
     }
+  }
+
+  /**
+   * 食材の残り回数が終わりまで持つように、出すペースをならす。
+   * 画面に1つも無いときは、すぐ出す(何も無い時間を作らない)。
+   */
+  function paceAllows(spawnUntil) {
+    if (active.length === 0) return true;
+    if (S.appearance.pacing === false) return true;
+    const stock = Data.get().ingredients.reduce((n, x) => n + Math.max(0, maxAppear(x.id) - (appeared[x.id] || 0)), 0);
+    if (stock <= 0) return false;
+    const interval = Math.max(0, spawnUntil - gameTime) / stock;
+    return gameTime - lastSpawnAt >= interval * 0.9;
+  }
+
+  // ── 区間(前半・中盤・終盤) ─────────────────────────────
+  function phase() { return S.phases[Math.max(0, phaseIndex)]; }
+
+  function updatePhase() {
+    let i = 0;
+    S.phases.forEach((ph, k) => { if (gameTime >= ph.startSec) i = k; });
+    if (i === phaseIndex) return;
+    phaseIndex = i;
+    onPhaseStart(S.phases[i]);
+  }
+
+  function onPhaseStart(ph) {
+    if (ph.message) showBig(startCount, ph.message, 1600);
+  }
+
+  // 区切りの位置に、時間のバーへ目印をつける
+  function drawTimerMarks() {
+    const marks = document.getElementById('timer-marks');
+    marks.innerHTML = '';
+    S.phases.forEach(ph => {
+      if (ph.startSec <= 0 || ph.startSec >= S.gameSeconds) return;
+      const m = document.createElement('span');
+      m.className = 'timer-mark';
+      // バーは右から減っていくので、のこり時間の位置に目印
+      m.style.left = (100 - (ph.startSec / S.gameSeconds) * 100) + '%';
+      marks.appendChild(m);
+    });
   }
 
   // ── 食材を出す ──────────────────────────────────────────
-  function shuffle(a) {
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
+  // ── 出てくる回数の上限 ─────────────────────────────────
+  function maxAppear(id) {
+    const ing = Data.get().byId[id];
+    return ing && ing.maxAppear != null ? ing.maxAppear : S.appearance.defaultMax;
+  }
+  function pendingComebacks(id) { return comeback.filter(c => c.id === id).length; }
+  /** あと何回出られるか(また出てくる予約の分は引いておく) */
+  function remainingAppear(id) {
+    return maxAppear(id) - (appeared[id] || 0) - pendingComebacks(id);
+  }
+
+  /** にがした・落ちた食材を「また出てくる」予約に入れる(上限の中だけ) */
+  function scheduleComeback(id) {
+    if (remainingAppear(id) > 0) comeback.push({ id, at: gameTime + S.respawnDelaySec });
   }
 
   function nextIngredient() {
+    const { byId, ingredients } = Data.get();
     const onScreen = new Set(active.map(a => a.ing.id));
     // にがした食材が戻ってくる時間になっていれば、それを優先
     const i = comeback.findIndex(c => c.at <= gameTime && !onScreen.has(c.id));
     if (i >= 0) {
       const id = comeback.splice(i, 1)[0].id;
-      return Data.get().byId[id];
+      return byId[id];
     }
-    const all = Data.get().ingredients;
-    for (let tries = 0; tries < all.length * 2; tries++) {
-      if (deck.length === 0) deck = shuffle(all.map(x => x.id));
-      const id = deck.pop();
-      if (!onScreen.has(id)) return Data.get().byId[id];
+    // 残り回数が多いもの・注文の料理に使うものほど出やすい
+    const favor = Number(S.pelican.orderFavor) || 1;
+    const cands = ingredients.filter(x => !onScreen.has(x.id) && remainingAppear(x.id) > 0);
+    const pool = cands.length > 1 ? cands.filter(x => x.id !== lastSpawnId) : cands;
+    if (pool.length === 0) return null;
+    const w = pool.map(x => remainingAppear(x.id) * (orderIds.has(x.id) ? favor : 1));
+    let r = Math.random() * w.reduce((a, b) => a + b, 0);
+    for (let k = 0; k < pool.length; k++) {
+      r -= w[k];
+      if (r <= 0) return pool[k];
     }
-    return null;
+    return pool[pool.length - 1];
   }
 
   function spawn() {
     const ing = nextIngredient();
     if (!ing) return;
+    appeared[ing.id] = (appeared[ing.id] || 0) + 1;
+    lastSpawnId = ing.id;
+    lastSpawnAt = gameTime;
     const g = geometry();
     const motionDef = Data.get().motions[ing.motion] || {};
-    const seconds = (motionDef.seconds || 8) / (S.speedScale || 1);
+    const seconds = (motionDef.seconds || 8) / ((S.speedScale || 1) * (phase().speed || 1));
 
     const el = document.createElement('div');
     el.className = 'ing';
@@ -249,9 +316,9 @@ const Game = (() => {
       const r = Motions.update(a.motion, dt);
       place(a, r);
       if (r.done) {
-        // にがしても失敗にしない:しばらくしたら、また出てくる
+        // にがしても失敗にしない:回数の上限の中なら、しばらくしてまた出てくる
         a.el.remove();
-        comeback.push({ id: a.ing.id, at: gameTime + S.respawnDelaySec });
+        scheduleComeback(a.ing.id);
         return false;
       }
       return true;
@@ -467,5 +534,10 @@ const Game = (() => {
     Sound.stopBGM();
   }
 
-  return { init, start, stop, pelicanSay };
+  /** 動作確認用:時間を sec 秒すすめる(開発者ツールで Game.debugSkip(30) など) */
+  function debugSkip(sec) { gameTime += sec; }
+  /** 動作確認用:いまの状態 */
+  function debugState() { return { gameTime, phase: phase() && phase().id, appeared, active: active.length }; }
+
+  return { init, start, stop, pelicanSay, debugSkip, debugState };
 })();

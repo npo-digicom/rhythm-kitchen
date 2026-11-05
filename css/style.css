@@ -216,6 +216,16 @@ html, body {
   border-radius: 999px;
   overflow: hidden;
 }
+#timer-marks { position: absolute; inset: 0; }
+.timer-mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  margin-left: -2px;
+  background: var(--wood);
+  border-radius: 2px;
+}
 #timer-fill {
   height: 100%;
   width: 100%;
