@@ -1,0 +1,80 @@
+'use strict';
+
+/**
+ * data フォルダの JSON を読み込み、ほかの部品から使いやすい形にまとめます。
+ * JSON を書き換えるだけで、食材・料理・空想レシピ・設定が変わります。
+ */
+const Data = (() => {
+  const FILES = {
+    settings:    'data/settings.json',
+    ingredients: 'data/ingredients.json',
+    dishes:      'data/dishes.json',
+    fantasy:     'data/fantasy.json',
+  };
+
+  const store = {
+    settings: null,
+    motions: {},
+    ingredients: [],
+    byId: {},
+    dishes: [],
+    portions: [],
+    fantasy: null,
+  };
+
+  async function fetchJSON(url) {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(url + ' (' + res.status + ')');
+    try {
+      return await res.json();
+    } catch (e) {
+      throw new Error(url + ' の書き方に間違いがあります');
+    }
+  }
+
+  async function load() {
+    const keys = Object.keys(FILES);
+    const results = await Promise.all(keys.map(k => fetchJSON(FILES[k])));
+    const raw = {};
+    keys.forEach((k, i) => { raw[k] = results[i]; });
+
+    store.settings = Object.assign({
+      gameSeconds: 90, bpm: 80, beatSound: true, bgm: {}, speedScale: 1,
+      maxOnScreenStart: 2, maxOnScreenEnd: 4, spawnEveryBeats: 2,
+      respawnDelaySec: 4, stopSpawningBeforeEndSec: 4,
+      zukanStorageKey: 'rhythmKitchen.zukan.v1',
+    }, raw.settings);
+
+    store.motions = raw.ingredients.motions || {};
+    store.ingredients = (raw.ingredients.ingredients || []).map(ing => Object.assign({
+      emoji: '❓', color: '#777777', motion: 'fuwafuwa', description: '',
+      image: 'images/ingredient_' + ing.id + '.png',
+    }, ing));
+    store.byId = {};
+    store.ingredients.forEach(ing => {
+      if (!store.motions[ing.motion]) {
+        console.warn('動きの型が見つかりません:', ing.id, ing.motion, '→ fuwafuwa で動かします');
+        ing.motion = 'fuwafuwa';
+      }
+      store.byId[ing.id] = ing;
+    });
+
+    store.dishes = raw.dishes.dishes || [];
+    store.portions = (raw.dishes.portions || []).slice().sort((a, b) => a.minCount - b.minCount);
+    store.fantasy = raw.fantasy;
+    return store;
+  }
+
+  return { load, get: () => store };
+})();
+
+/** 見つからなかった画像(何度も読みに行かないように覚えておく) */
+const missingImages = new Set();
+
+/** 食材の絵:PNG があればそれを、なければ絵文字を表示する */
+function ingredientIconHTML(ing) {
+  const img = ing.image && !missingImages.has(ing.image)
+    ? `<img src="${ing.image}" alt="" draggable="false" onerror="missingImages.add(this.getAttribute('src'));this.remove()">`
+    : '';
+  return `<span class="emoji" aria-hidden="true">${ing.emoji}</span>${img}`;
+}
