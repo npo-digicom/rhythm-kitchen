@@ -5,6 +5,7 @@
  * PNG 画像があればそれを使い、なければここにある SVG のダミーを出します。
  *   ペリカン  → images/pelican.png
  *   器        → images/vessel_<id>.png(data/vessels.json の image)
+ *   カモメ    → images/seagull.png
  */
 const Art = (() => {
   // ── ペリカン(ダミー) ─────────────────────────────────
@@ -27,6 +28,29 @@ const Art = (() => {
       // 目とほっぺ
       '<circle cx="81" cy="28" r="3.6" fill="#2B1700"/><circle cx="82.2" cy="26.8" r="1.2" fill="#fff"/>' +
       '<circle cx="74" cy="37" r="3.5" fill="#FF9AA2" opacity="0.8"/>' +
+    '</svg>';
+
+  // ── カモメ(ダミー)。右向き。食材の丸とまちがえないよう、丸や名札は付けない ──
+  const SEAGULL_SVG =
+    '<svg viewBox="0 0 140 90" aria-hidden="true">' +
+      // 奥の羽
+      '<g class="wing wing-back"><path d="M66 46 Q54 12 26 2 Q50 26 80 46 Z" fill="#7F8C99" stroke="#2A2A2A" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M26 2 Q34 10 40 14 L34 6 Z" fill="#222"/></g>' +
+      // しっぽ
+      '<path d="M40 50 L14 42 L18 60 Z" fill="#FFFFFF" stroke="#2A2A2A" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M14 42 L20 50 L18 60" fill="#222"/>' +
+      // からだと頭
+      '<ellipse cx="70" cy="54" rx="34" ry="15" fill="#FFFFFF" stroke="#2A2A2A" stroke-width="3"/>' +
+      '<circle cx="104" cy="44" r="13" fill="#FFFFFF" stroke="#2A2A2A" stroke-width="3"/>' +
+      // くちばし(黄色に赤い点)
+      '<path d="M114 42 L136 48 L114 51 Z" fill="#F9C80E" stroke="#2A2A2A" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<circle cx="128" cy="48.5" r="2.2" fill="#E53935"/>' +
+      // いたずらっぽい目
+      '<circle cx="108" cy="41" r="2.8" fill="#111"/>' +
+      '<path d="M101 34 L113 37" stroke="#111" stroke-width="3" stroke-linecap="round"/>' +
+      // 手前の羽
+      '<g class="wing wing-front"><path d="M64 50 Q60 10 92 0 Q80 26 84 50 Z" fill="#A9B4BF" stroke="#2A2A2A" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M92 0 Q86 8 85 16 L90 6 Z" fill="#222"/></g>' +
     '</svg>';
 
   // ── 器(ダミー)。どれも 300×120 の枠に、上のふちが y=14 前後になるように描く ──
@@ -112,5 +136,11 @@ const Art = (() => {
     return artHTML(src, PELICAN_SVG, 'pelican-art');
   }
 
-  return { artHTML, pelican, vessel };
+  function seagull() {
+    const S = Data.get().settings;
+    const src = (S.images && S.images.seagull) || 'images/seagull.png';
+    return artHTML(src, SEAGULL_SVG, 'seagull-art');
+  }
+
+  return { artHTML, pelican, vessel, seagull };
 })();

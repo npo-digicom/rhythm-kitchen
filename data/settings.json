@@ -61,6 +61,17 @@
       "makikomi": 8
     }
   },
+  "seagull": {
+    "_memo": "カモメの設定。phases で seagulls が true の区間にだけ来ます。firstDelaySec=区間が始まってから最初に来るまでの秒数、intervalSec=次に来るまでの秒数(最小と最大の間でランダム)、approachSec=器まで来る時間、escapeSec=くわえて逃げる時間(この間にタップで追い払える。過ぎるとペリカンが取り返してくれる)、tapRadius=タップの当たりの広さ(px)。",
+    "firstDelaySec": 4,
+    "intervalSec": [
+      8,
+      12
+    ],
+    "approachSec": 1.8,
+    "escapeSec": 3,
+    "tapRadius": 90
+  },
   "respawnDelaySec": 4,
   "stopSpawningBeforeEndSec": 4,
   "zukanStorageKey": "rhythmKitchen.zukan.v1",
@@ -69,11 +80,14 @@
     "ask": "今日は{dish}が食べたいな",
     "match": "注文どおり!ありがとう!",
     "other": "これもおいしそう!",
-    "orderFavor": 1.6
+    "orderFavor": 1.6,
+    "thanks": "ありがとう!",
+    "rescue": "とりかえしたよ!"
   },
   "images": {
     "_memo": "キャラクターの画像。ファイルが無ければダミーの絵が出ます。",
-    "pelican": "images/pelican.png"
+    "pelican": "images/pelican.png",
+    "seagull": "images/seagull.png"
   },
   "sounds": {
     "_memo": "効果音をファイルに差し替えるときは、名前の右にファイルの場所を書きます(例 \"audio/fanfare.mp3\")。空なら合成音。",

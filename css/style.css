@@ -356,6 +356,88 @@ html, body {
   100% { transform: translate(-50%, -140%) scale(1); opacity: 0; }
 }
 
+/* カモメ */
+.gull {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 130px;
+  height: 84px;
+  z-index: 3;
+  will-change: transform;
+}
+.gull-art { position: absolute; inset: 0; animation: gull-bob 0.5s ease-in-out infinite alternate; }
+.gull.flip .gull-art { transform: scaleX(-1); }
+@keyframes gull-bob { from { translate: 0 -3px; } to { translate: 0 3px; } }
+.gull .wing { transform-box: fill-box; animation: flap 0.32s ease-in-out infinite alternate; }
+.gull .wing-back  { transform-origin: 100% 100%; }
+.gull .wing-front { transform-origin: 0% 100%; }
+@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-0.55); } }
+.gull-carry {
+  position: absolute;
+  right: -6px;
+  top: 46px;
+  width: 50px;
+  height: 50px;
+  font-size: 40px;
+  line-height: 50px;
+  text-align: center;
+  display: none;
+}
+.gull.flip .gull-carry { right: auto; left: -6px; }
+.gull.carrying .gull-carry { display: block; }
+.gull-carry img, .pelican-fly-carry img { width: 100%; height: 100%; object-fit: contain; }
+.gull-hint {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #fff;
+  background: #1565C0;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  padding: 0 12px;
+  line-height: 1.6;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* 助けに来るペリカン */
+.pelican-fly {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  z-index: 4;
+}
+.pelican-fly-art { position: absolute; inset: 0; animation: pelican-flap 0.3s ease-in-out infinite alternate; }
+.pelican-fly.flip .pelican-fly-art { transform: scaleX(-1); }
+@keyframes pelican-flap { from { translate: 0 -5px; } to { translate: 0 5px; } }
+.pelican-fly-carry {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 46px;
+  height: 46px;
+  font-size: 36px;
+  line-height: 46px;
+  text-align: center;
+}
+.pelican-fly.flip .pelican-fly-carry { right: auto; left: 0; }
+.pelican-fly .pelican-fly-speech {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1.05rem;
+  padding: 2px 12px;
+}
+.pelican-fly .pelican-fly-speech[hidden] { display: none; }
+
 /* 網 */
 .net {
   position: absolute;
