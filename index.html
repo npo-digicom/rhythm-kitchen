@@ -2,87 +2,144 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>リズムキッチン</title>
+  <meta name="theme-color" content="#FFF4E2">
+  <title>リズムキッチン 食材すくい</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<!-- スマホの形の枠。iPhoneでは画面いっぱい、パソコンでは中央にスマホの形で表示 -->
+<div id="app">
 
   <!-- ① はじまりの画面 -->
-  <div id="screen-start" class="screen active">
-    <div class="start-inner">
-      <div class="start-logo">🍳</div>
-      <h1 class="start-title">リズムキッチン</h1>
-      <div class="start-dish-box">
-        <p class="start-label">今日作るのは</p>
-        <p class="start-dish">プサリ・プラキ</p>
-        <p class="start-subtitle">ギリシャの煮魚料理</p>
+  <section id="screen-start" class="screen active" aria-label="はじまり">
+    <div class="scroll">
+      <div class="start-inner">
+        <div class="start-logo" aria-hidden="true">🥘</div>
+        <h1 class="start-title">リズムキッチン</h1>
+        <p class="start-sub">食材すくい</p>
+
+        <ol class="howto card">
+          <li><span class="howto-icon" aria-hidden="true">🐟</span>いろいろな食材が動きます</li>
+          <li><span class="howto-icon" aria-hidden="true">👆</span>タップすると網ですくえます</li>
+          <li><span class="howto-icon" aria-hidden="true">🧺</span>ザルにたまった食材で料理ができます</li>
+        </ol>
+        <p class="start-note">にがしても大丈夫。またやってきます。</p>
+
+        <button id="btn-start" class="btn btn-primary" type="button" disabled>じゅんび中…</button>
+        <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+        <p id="load-error" class="load-error" hidden></p>
       </div>
-      <button id="btn-start" class="btn-primary">はじめる</button>
     </div>
-  </div>
+  </section>
 
   <!-- ② ゲーム画面 -->
-  <div id="screen-game" class="screen">
-    <div id="timer-bar"><div id="timer-fill"></div></div>
-
-    <div id="game-area">
-      <div id="lane" role="region" aria-label="食材レーン"></div>
-
-      <!-- まな板（中央固定） -->
-      <div id="cutting-board" aria-hidden="true">
-        <div class="board-cap"></div>
-        <div class="board-body"></div>
-        <div class="board-cap"></div>
+  <section id="screen-game" class="screen" aria-label="ゲーム">
+    <div id="field">
+      <div id="hud">
+        <span class="hud-icon" aria-hidden="true">⏳</span>
+        <div id="timer-bar" role="progressbar" aria-label="のこり時間"><div id="timer-fill"></div></div>
       </div>
 
-      <!-- ひとこと話（ゲームエリア内に重ねて表示） -->
-      <div id="fact-box" aria-live="polite">
-        <p id="fact-quality"></p>
-        <p id="fact-text"></p>
+      <div id="ingredients-layer"></div>
+
+      <!-- ザル(画面下) -->
+      <div id="basket" aria-hidden="true">
+        <div id="pile"></div>
+        <svg class="zaru" viewBox="0 0 300 120" preserveAspectRatio="none">
+          <defs>
+            <pattern id="weave" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="14" height="14" fill="#D9A55B"/>
+              <rect width="7" height="14" fill="#C28A3E"/>
+            </pattern>
+          </defs>
+          <path d="M6 14 Q150 30 294 14 L262 104 Q150 124 38 104 Z" fill="url(#weave)" stroke="#7A4E1C" stroke-width="5"/>
+          <ellipse cx="150" cy="14" rx="146" ry="11" fill="#E8BE7A" stroke="#7A4E1C" stroke-width="5"/>
+        </svg>
       </div>
+
+      <div id="effects-layer"></div>
+
+      <div id="catch-msg" aria-live="polite"></div>
+
+      <div id="start-count" class="big-text" hidden></div>
+      <div id="finale-text" class="big-text" hidden></div>
     </div>
-
-    <!-- 切るボタン -->
-    <button id="btn-cut" aria-label="食材を切る">
-      <span class="cut-icon">✂</span>
-      <span class="cut-label">切る</span>
-    </button>
-  </div>
+  </section>
 
   <!-- ③ 完成画面 -->
-  <div id="screen-complete" class="screen">
-    <div class="complete-inner">
-      <h2 class="complete-title">できあがり！</h2>
+  <section id="screen-complete" class="screen" aria-label="完成">
+    <div class="scroll">
+      <div class="complete-inner">
+        <p class="complete-kicker">できあがり!</p>
+        <h2 id="dish-name" class="dish-name"></h2>
+        <p id="dish-subtitle" class="dish-subtitle"></p>
 
-      <div class="dish-plate">
-        <img src="images/dish_psari_plaki.png" alt="プサリ・プラキの完成"
-             onerror="this.style.display='none'">
-        <div class="dish-dummy" aria-hidden="true">🐟🍅</div>
+        <div id="dish-visual" class="dish-visual"></div>
+        <p id="portion-badge" class="portion-badge"></p>
+        <p id="portion-message" class="portion-message"></p>
+
+        <div class="card caught-card">
+          <h3 class="card-title">つかまえた食材</h3>
+          <ul id="caught-list" class="caught-list"></ul>
+        </div>
+
+        <div class="card recipe-card">
+          <h3 class="card-title">🍳 今日作れる、かんたんレシピ</h3>
+          <p id="recipe-title" class="recipe-title"></p>
+          <p class="recipe-sub">材料 <span id="recipe-servings"></span></p>
+          <ul id="recipe-materials" class="recipe-materials"></ul>
+          <p class="recipe-sub">作り方</p>
+          <ol id="recipe-steps" class="recipe-steps"></ol>
+        </div>
+
+        <div class="card fantasy-card">
+          <h3 id="fantasy-heading" class="card-title fantasy-heading">🌈 空想レシピ</h3>
+          <p id="fantasy-notice" class="fantasy-notice"></p>
+          <p id="fantasy-title" class="fantasy-title"></p>
+          <ol id="fantasy-steps" class="fantasy-steps"></ol>
+          <p id="fantasy-comment" class="fantasy-comment"></p>
+          <button id="btn-fantasy" class="btn btn-fantasy" type="button">🔄 新しいレシピを作る</button>
+        </div>
+
+        <button id="btn-retry" class="btn btn-primary" type="button">もう一度遊ぶ</button>
+        <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
       </div>
-
-      <div id="recipe-card">
-        <h3>電子レンジで作る<br>プサリ・プラキ</h3>
-        <ol>
-          <li>イワシに塩をふり、耐熱皿に並べる</li>
-          <li>玉ねぎ・にんにく・トマトをのせる</li>
-          <li>塩漬けオリーブとレモン汁を加える</li>
-          <li>オリーブオイルをかけてラップをする</li>
-          <li>600W で 8 分加熱する</li>
-          <li>パセリを散らして完成！</li>
-        </ol>
-      </div>
-
-      <button id="btn-retry" class="btn-primary">もう一度</button>
     </div>
-  </div>
+  </section>
 
-  <!-- BGM差し替え用のaudio要素（src を差し替えるだけで使えます） -->
-  <!-- <audio id="bgm" src="audio/bgm.mp3" loop></audio> -->
+  <!-- ④ 食材図鑑 -->
+  <section id="screen-zukan" class="screen" aria-label="食材図鑑">
+    <header class="zukan-header">
+      <button id="btn-zukan-back" class="btn-back" type="button">← もどる</button>
+      <h2 class="zukan-title">食材図鑑</h2>
+    </header>
+    <div class="scroll">
+      <p id="zukan-progress" class="zukan-progress"></p>
+      <ul id="zukan-grid" class="zukan-grid"></ul>
+    </div>
 
-  <script src="js/audio.js"></script>
-  <script src="js/game.js"></script>
+    <div id="zukan-detail" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="zukan-detail-name">
+      <div class="modal-card">
+        <div id="zukan-detail-icon" class="detail-icon"></div>
+        <h3 id="zukan-detail-name" class="detail-name"></h3>
+        <p id="zukan-detail-motion" class="detail-motion"></p>
+        <p id="zukan-detail-text" class="detail-text"></p>
+        <button id="btn-zukan-close" class="btn btn-primary" type="button">とじる</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/data.js"></script>
+<script src="js/motions.js"></script>
+<script src="js/zukan.js"></script>
+<script src="js/dishes.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
