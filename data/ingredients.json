@@ -53,6 +53,12 @@
       "description": "日本の食卓の主役。炊きたての湯気と香りは、何よりのごちそうです。" },
     { "id": "tamago",   "name": "卵",           "emoji": "🥚", "color": "#D4A017", "motion": "ponpon",
       "image": "images/ingredient_tamago.png",
-      "description": "ゆでても焼いてもおいしい万能食材。たんぱく質がしっかりとれます。" }
+      "description": "ゆでても焼いてもおいしい万能食材。たんぱく質がしっかりとれます。" },
+    { "id": "focaccia", "name": "フォカッチャ", "emoji": "🫓", "color": "#A0522D", "motion": "guruguru",
+      "image": "images/ingredient_focaccia.png",
+      "description": "イタリア生まれの平たいパン。オリーブオイルをたっぷり使い、指でくぼみをつけて焼きます。" },
+    { "id": "paximadi", "name": "パクシマディ", "emoji": "🍞", "color": "#8B5A2B", "motion": "pyonpyon",
+      "image": "images/ingredient_paximadi.png",
+      "description": "ギリシャ・クレタ島の大麦のラスク。とても固いので、水やトマトの汁でしめらせて食べます。" }
   ]
 }

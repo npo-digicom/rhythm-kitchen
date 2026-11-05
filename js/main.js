@@ -192,7 +192,7 @@ const App = (() => {
   function renderFantasy(animate) {
     if (!lastResult) return;
     const names = lastResult.caughtIngs.map(i => i.name);
-    const fr = Dishes.fantasy(names);
+    const fr = Dishes.fantasy(names, lastResult.dish && lastResult.dish.id);
     $('fantasy-title').textContent = fr.title;
     fillList($('fantasy-steps'), fr.steps);
     $('fantasy-comment').textContent = fr.comment;

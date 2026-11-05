@@ -75,10 +75,20 @@ const Dishes = (() => {
 
   /**
    * つかまえた食材の名前リストから、空想レシピを1つ作る。
+   * dishId を渡すと、fantasy.json の dishExtras にあるその料理用の部品もまぜる。
    * 前回と同じ題名にならないように作り直す。
    */
-  function fantasy(names) {
-    const f = Data.get().fantasy;
+  function fantasy(names, dishId) {
+    const base = Data.get().fantasy;
+    // 料理ごとの部品(dishExtras)があれば、ふだんの部品にまぜる
+    const extra = (base.dishExtras && dishId && base.dishExtras[dishId]) || {};
+    const f = Object.assign({}, base);
+    ['titlePatterns', 'steps', 'comments'].forEach(k => {
+      if (Array.isArray(extra[k]) && extra[k].length) {
+        // 料理ごとの部品が出やすいように2回ずつ入れる
+        f[k] = (base[k] || []).concat(extra[k], extra[k]);
+      }
+    });
     let pool = names.slice();
     if (pool.length === 0) pool = shuffle(Data.get().ingredients.map(i => i.name)).slice(0, 3);
 
