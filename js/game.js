@@ -36,6 +36,9 @@ const Game = (() => {
   let onFinish = null;
   let catchTimer = null;
   let useBeatSound = true;
+  let order = null;            // ペリカンの注文(料理)
+  let orderIds = new Set();    // 注文の料理に使う食材
+  let popTimer = null;
 
   function init() {
     S = Data.get().settings;
@@ -49,6 +52,11 @@ const Game = (() => {
     startCount = document.getElementById('start-count');
     finaleText = document.getElementById('finale-text');
     field.addEventListener('pointerdown', onTap);
+    document.getElementById('btn-order-ok').addEventListener('click', () => {
+      Sound.unlock();
+      document.getElementById('order-overlay').hidden = true;
+      begin();
+    });
   }
 
   // ── 範囲と大きさ ────────────────────────────────────────
@@ -69,8 +77,36 @@ const Game = (() => {
   }
 
   // ── 開始 ────────────────────────────────────────────────
-  function start(finishCallback) {
+  /**
+   * 始める前に、ペリカンが注文を言う。「まかせて!」でゲーム開始。
+   */
+  function start(orderDish, finishCallback) {
     onFinish = finishCallback;
+    order = orderDish;
+    orderIds = Dishes.dishIngredientIds(order);
+    resetField();
+
+    document.getElementById('order-chip').hidden = true;
+    document.getElementById('order-pelican').innerHTML = Art.pelican();
+    document.getElementById('order-text').innerHTML =
+      escapeHTML(Data.get().settings.pelican.ask).replace('{dish}', `<b>${escapeHTML(order.name)}</b>`);
+    document.getElementById('order-emoji').textContent = (order.emoji || []).join(' ');
+    document.getElementById('order-overlay').hidden = false;
+    Sound.play('pelican');
+  }
+
+  function resetField() {
+    layer.innerHTML = '';
+    fx.innerHTML = '';
+    pile.innerHTML = '';
+    document.getElementById('pelican-pop').hidden = true;
+    timerFill.style.transform = 'scaleX(1)';
+  }
+
+  function begin() {
+    document.getElementById('order-chip-pelican').innerHTML = Art.pelican();
+    document.getElementById('order-chip-name').textContent = order.name;
+    document.getElementById('order-chip').hidden = false;
     playing = true;
     gameTime = 0;
     lastBeat = -1;
@@ -224,6 +260,7 @@ const Game = (() => {
 
   // ── タップ ──────────────────────────────────────────────
   function onTap(e) {
+    if (e.target.closest('button')) return;   // 注文の「まかせて!」ボタンなど
     e.preventDefault();
     Sound.unlock();
     if (!playing) return;
@@ -373,7 +410,7 @@ const Game = (() => {
     later(4900, () => {
       finaleText.hidden = true;
       finaleText.classList.remove('boom');
-      if (onFinish) onFinish({ caught: Object.assign({}, caught) });
+      if (onFinish) onFinish({ caught: Object.assign({}, caught), order });
     });
   }
 
@@ -408,6 +445,20 @@ const Game = (() => {
     setTimeout(() => f.remove(), 800);
   }
 
+  // ── ペリカンのひとこと ─────────────────────────────────
+  function pelicanSay(text, ms) {
+    const box = document.getElementById('pelican-pop');
+    const art = document.getElementById('pelican-pop-art');
+    if (!art.firstChild) art.innerHTML = Art.pelican();
+    document.getElementById('pelican-pop-text').textContent = text;
+    box.hidden = false;
+    box.classList.remove('show');
+    void box.offsetWidth;
+    box.classList.add('show');
+    clearTimeout(popTimer);
+    popTimer = setTimeout(() => { box.hidden = true; }, ms || 1800);
+  }
+
   /** ゲームを途中でやめる(画面を離れるとき用) */
   function stop() {
     playing = false;
@@ -416,5 +467,5 @@ const Game = (() => {
     Sound.stopBGM();
   }
 
-  return { init, start, stop };
+  return { init, start, stop, pelicanSay };
 })();

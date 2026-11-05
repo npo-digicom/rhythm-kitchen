@@ -25,6 +25,7 @@
           <li><span class="howto-icon" aria-hidden="true">🐟</span>いろいろな食材が動きます</li>
           <li><span class="howto-icon" aria-hidden="true">👆</span>タップすると網ですくえます</li>
           <li><span class="howto-icon" aria-hidden="true">🧺</span>ザルにたまった食材で料理ができます</li>
+          <li><span class="howto-icon" aria-hidden="true">🍽️</span>ペリカンの注文をめざしてみましょう</li>
         </ol>
         <p class="start-note">にがしても大丈夫。またやってきます。</p>
 
@@ -39,8 +40,11 @@
   <section id="screen-game" class="screen" aria-label="ゲーム">
     <div id="field">
       <div id="hud">
-        <span class="hud-icon" aria-hidden="true">⏳</span>
-        <div id="timer-bar" role="progressbar" aria-label="のこり時間"><div id="timer-fill"></div></div>
+        <div class="hud-row">
+          <span class="hud-icon" aria-hidden="true">⏳</span>
+          <div id="timer-bar" role="progressbar" aria-label="のこり時間"><div id="timer-fill"></div><div id="timer-marks"></div></div>
+        </div>
+        <div id="order-chip" hidden><span id="order-chip-pelican" class="order-chip-pelican"></span><span>注文:<b id="order-chip-name"></b></span></div>
       </div>
 
       <div id="ingredients-layer"></div>
@@ -64,6 +68,22 @@
 
       <div id="catch-msg" aria-live="polite"></div>
 
+      <!-- ペリカンのひとこと(ゲーム中) -->
+      <div id="pelican-pop" aria-live="polite" hidden>
+        <div id="pelican-pop-art" class="pelican-pop-art"></div>
+        <div id="pelican-pop-text" class="speech"></div>
+      </div>
+
+      <!-- ペリカンの注文(始まる前) -->
+      <div id="order-overlay" class="order-overlay" hidden>
+        <div class="order-card">
+          <div id="order-pelican" class="order-pelican"></div>
+          <p id="order-text" class="speech speech-big"></p>
+          <p id="order-emoji" class="order-emoji" aria-hidden="true"></p>
+          <button id="btn-order-ok" class="btn btn-primary" type="button">まかせて!</button>
+        </div>
+      </div>
+
       <div id="start-count" class="big-text" hidden></div>
       <div id="finale-text" class="big-text" hidden></div>
     </div>
@@ -73,6 +93,10 @@
   <section id="screen-complete" class="screen" aria-label="完成">
     <div class="scroll">
       <div class="complete-inner">
+        <div id="order-result" class="order-result">
+          <div id="order-result-pelican" class="order-result-pelican"></div>
+          <p id="order-result-text" class="speech"></p>
+        </div>
         <p class="complete-kicker">できあがり!</p>
         <h2 id="dish-name" class="dish-name"></h2>
         <p id="dish-subtitle" class="dish-subtitle"></p>
@@ -108,6 +132,7 @@
         <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
       </div>
     </div>
+    <div id="celebrate-layer" aria-hidden="true"></div>
   </section>
 
   <!-- ④ 食材図鑑 -->
@@ -136,6 +161,7 @@
 
 <script src="js/audio.js"></script>
 <script src="js/data.js"></script>
+<script src="js/art.js"></script>
 <script src="js/motions.js"></script>
 <script src="js/zukan.js"></script>
 <script src="js/dishes.js"></script>

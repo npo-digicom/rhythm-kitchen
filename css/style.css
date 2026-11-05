@@ -199,13 +199,16 @@ html, body {
   left: 16px;
   right: 16px;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   z-index: 40;
   pointer-events: none;
 }
+.hud-row { display: flex; align-items: center; gap: 10px; }
 .hud-icon { font-size: 1.6rem; line-height: 1; }
 #timer-bar {
+  position: relative;
   flex: 1;
   height: 22px;
   background: rgba(255, 255, 255, 0.9);
@@ -368,7 +371,7 @@ html, body {
 #catch-msg {
   position: absolute;
   left: 50%;
-  top: calc(52px + env(safe-area-inset-top, 0px));
+  top: calc(104px + env(safe-area-inset-top, 0px));
   transform: translate(-50%, -10px);
   z-index: 45;
   background: var(--paper);
@@ -456,6 +459,104 @@ html, body {
   to   { transform: scale(12); opacity: 0; }
 }
 
+/* ── キャラクター・器の絵(画像があれば画像、なければダミー) ── */
+.art { position: relative; display: block; width: 100%; height: 100%; }
+.art > .art-dummy, .art > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.art > .art-dummy svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.art > img { object-fit: contain; }
+.art.has-img > .art-dummy { display: none; }
+
+/* 吹き出し */
+.speech {
+  position: relative;
+  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 22px;
+  padding: 8px 16px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.speech b { color: var(--orange); }
+.speech-big { font-size: 1.45rem; text-align: center; }
+
+/* 注文のチップ(ゲーム中、上のほう) */
+#order-chip {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 3px solid var(--orange);
+  border-radius: 999px;
+  padding: 2px 14px 2px 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.4;
+  max-width: 100%;
+}
+#order-chip[hidden] { display: none; }
+#order-chip b { color: var(--orange); }
+.order-chip-pelican { width: 40px; height: 40px; flex-shrink: 0; }
+
+/* 始まる前の注文 */
+.order-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 244, 226, 0.88);
+}
+.order-overlay[hidden] { display: none; }
+.order-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: big-in 0.4s cubic-bezier(.2, 1.6, .5, 1);
+}
+.order-pelican { width: 190px; height: 190px; animation: pelican-bob 1.2s ease-in-out infinite; }
+@keyframes pelican-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50%      { transform: translateY(-8px) rotate(-3deg); }
+}
+.order-card .speech::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  margin-left: -12px;
+  border: 12px solid transparent;
+  border-bottom: 14px solid var(--ink);
+  border-top: none;
+}
+.order-emoji { font-size: 2.4rem; letter-spacing: 0.1em; line-height: 1.2; text-align: center; }
+
+/* ゲーム中のペリカンのひとこと(左下から) */
+#pelican-pop {
+  position: absolute;
+  left: 8px;
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  z-index: 46;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+#pelican-pop[hidden] { display: none; }
+#pelican-pop.show { animation: pop-up 0.4s cubic-bezier(.2, 1.6, .5, 1); }
+@keyframes pop-up {
+  from { transform: translateY(40px) scale(0.6); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.pelican-pop-art { width: 96px; height: 96px; flex-shrink: 0; }
+#pelican-pop .speech { margin-bottom: 50px; white-space: nowrap; }
+
 /* ── ③ 完成 ───────────────────────────────────────────────── */
 .complete-inner {
   display: flex;
@@ -463,6 +564,57 @@ html, body {
   align-items: center;
   gap: 16px;
 }
+.order-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.order-result[hidden] { display: none; }
+.order-result-pelican { width: 92px; height: 92px; flex-shrink: 0; animation: pelican-bob 1s ease-in-out infinite; }
+.order-result .speech { flex: 1; font-size: 1.3rem; animation: big-in 0.5s cubic-bezier(.2, 1.6, .5, 1); }
+.order-result.match .speech { border-color: var(--orange); background: #FFF7D6; }
+
+#celebrate-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+.confetti {
+  position: absolute;
+  top: -20px;
+  width: 12px;
+  height: 18px;
+  border-radius: 3px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0%   { transform: translate(0, 0) rotate(0); opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(var(--dx), 105vh) rotate(var(--rot)); opacity: 0; }
+}
+.balloon {
+  position: absolute;
+  bottom: -70px;
+  font-size: 54px;
+  line-height: 1;
+  opacity: 0;
+  animation-name: balloon-rise;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+@keyframes balloon-rise {
+  0%   { transform: translate(0, 0); opacity: 1; }
+  50%  { transform: translate(var(--sway), -55vh); }
+  90%  { opacity: 1; }
+  100% { transform: translate(0, -110vh); opacity: 0; }
+}
+
 .complete-kicker {
   font-size: 1.25rem;
   font-weight: 900;

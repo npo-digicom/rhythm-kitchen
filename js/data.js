@@ -43,7 +43,12 @@ const Data = (() => {
       maxOnScreenStart: 2, maxOnScreenEnd: 4, spawnEveryBeats: 2,
       respawnDelaySec: 4, stopSpawningBeforeEndSec: 4,
       zukanStorageKey: 'rhythmKitchen.zukan.v1',
+      pelican: {}, images: {}, sounds: {},
     }, raw.settings);
+    store.settings.pelican = Object.assign({
+      ask: '今日は{dish}が食べたいな', match: '注文どおり!ありがとう!', other: 'これもおいしそう!',
+      orderFavor: 1.6,
+    }, store.settings.pelican);
 
     store.motions = raw.ingredients.motions || {};
     store.ingredients = (raw.ingredients.ingredients || []).map(ing => Object.assign({
@@ -77,4 +82,9 @@ function ingredientIconHTML(ing) {
     ? `<img src="${ing.image}" alt="" draggable="false" onerror="missingImages.add(this.getAttribute('src'));this.remove()">`
     : '';
   return `<span class="emoji" aria-hidden="true">${ing.emoji}</span>${img}`;
+}
+
+/** 文字を HTML に入れても安全な形にする */
+function escapeHTML(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

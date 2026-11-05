@@ -8,6 +8,8 @@ const App = (() => {
   let current = 'start';
   let beforeZukan = 'start';
   let bgmTried = false;
+  let effectsTried = false;
+  let celebrateTimers = [];
   let lastResult = null;
 
   function show(name) {
@@ -56,19 +58,26 @@ const App = (() => {
 
   async function startGame() {
     const S = Data.get().settings;
-    // 曲は最初の1回だけ読み込む(無ければ拍の音だけ)
-    if (!bgmTried && S.bgm && S.bgm.file) {
-      bgmTried = true;
+    // 曲と効果音ファイルは最初の1回だけ読み込む(無ければ拍の音・合成音)
+    const needBgm = !bgmTried && S.bgm && S.bgm.file;
+    const needFx = !effectsTried && Object.keys(S.sounds || {}).some(k => !k.startsWith('_') && S.sounds[k]);
+    if (needBgm || needFx) {
       const btn = $('btn-start');
       btn.disabled = true;
       btn.textContent = 'じゅんび中…';
-      await Sound.loadBGM(S.bgm.file);
+      await Promise.all([
+        needBgm ? Sound.loadBGM(S.bgm.file) : null,
+        needFx ? Sound.loadEffects(S.sounds) : null,
+      ]);
       btn.disabled = false;
       btn.textContent = 'はじめる';
     }
+    bgmTried = true;
+    effectsTried = true;
+    clearCelebration();
     show('game');
     // 画面の大きさが決まってから始める
-    requestAnimationFrame(() => Game.start(onGameFinish));
+    requestAnimationFrame(() => Game.start(Dishes.pickOrder(), onGameFinish));
   }
 
   function openZukan() {
@@ -82,7 +91,9 @@ const App = (() => {
     const { byId, ingredients } = Data.get();
     const caught = result.caught;
     const total = Object.values(caught).reduce((a, b) => a + b, 0);
-    const dish = Dishes.choose(caught);
+    const order = result.order || null;
+    // ゲームの終わりに決まった料理があればそれを使う(器と料理をそろえるため)
+    const dish = result.dish || Dishes.choose(caught, order && order.id);
     const portion = Dishes.portion(total);
     // つかまえた食材(図鑑の順に並べる)
     const caughtIngs = ingredients.filter(i => caught[i.id]);
@@ -119,6 +130,61 @@ const App = (() => {
     renderFantasy(false);
 
     show('complete');
+    celebrate(order, dish);
+  }
+
+  // ── 注文の結果:どちらもお祝い ──────────────────────────
+  function celebrate(order, dish) {
+    const P = Data.get().settings.pelican;
+    const box = $('order-result');
+    if (!order) { box.hidden = true; return; }
+    box.hidden = false;
+    const match = order.id === dish.id;
+    box.classList.toggle('match', match);
+    $('order-result-pelican').innerHTML = Art.pelican();
+    $('order-result-text').textContent = match ? P.match : P.other;
+
+    clearCelebration();
+    const layer = $('celebrate-layer');
+    const later = (ms, fn) => celebrateTimers.push(setTimeout(fn, ms));
+    if (match) {
+      // ファンファーレと紙吹雪
+      later(250, () => Sound.play('fanfare'));
+      const colors = ['#E53935', '#FDD835', '#43A047', '#1E88E5', '#8E24AA', '#FB8C00'];
+      for (let i = 0; i < 60; i++) {
+        const c = document.createElement('span');
+        c.className = 'confetti';
+        c.style.left = (Math.random() * 100) + '%';
+        c.style.background = colors[i % colors.length];
+        c.style.setProperty('--dx', (Math.random() * 80 - 40) + 'px');
+        c.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+        c.style.animationDelay = (Math.random() * 1.2) + 's';
+        c.style.animationDuration = (2.4 + Math.random() * 1.6) + 's';
+        layer.appendChild(c);
+      }
+    } else {
+      // 花束と風船が飛ぶ
+      later(250, () => Sound.play('celebrate'));
+      const items = ['🎈', '💐', '🎈', '🌸', '🎈', '💐', '🌷', '🎈', '🌼', '🎈', '💐', '🎈'];
+      items.forEach((em, i) => {
+        const b = document.createElement('span');
+        b.className = 'balloon';
+        b.textContent = em;
+        b.style.left = (4 + (i / items.length) * 88 + Math.random() * 4) + '%';
+        b.style.setProperty('--sway', (Math.random() * 40 - 20) + 'px');
+        b.style.animationDelay = (Math.random() * 1.4) + 's';
+        b.style.animationDuration = (3.4 + Math.random() * 1.4) + 's';
+        layer.appendChild(b);
+      });
+    }
+    later(6000, clearCelebration);
+  }
+
+  function clearCelebration() {
+    celebrateTimers.forEach(clearTimeout);
+    celebrateTimers = [];
+    const layer = $('celebrate-layer');
+    if (layer) layer.innerHTML = '';
   }
 
   function fillList(el, items) {

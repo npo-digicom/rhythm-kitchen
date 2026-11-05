@@ -15,5 +15,36 @@
   "spawnEveryBeats": 2,
   "respawnDelaySec": 4,
   "stopSpawningBeforeEndSec": 4,
-  "zukanStorageKey": "rhythmKitchen.zukan.v1"
+  "zukanStorageKey": "rhythmKitchen.zukan.v1",
+  "pelican": {
+    "_memo": "ペリカンのせりふ。{dish} は料理の名前に置きかわります。",
+    "ask": "今日は{dish}が食べたいな",
+    "match": "注文どおり!ありがとう!",
+    "other": "これもおいしそう!",
+    "orderFavor": 1.6
+  },
+  "images": {
+    "_memo": "キャラクターの画像。ファイルが無ければダミーの絵が出ます。",
+    "pelican": "images/pelican.png"
+  },
+  "sounds": {
+    "_memo": "効果音をファイルに差し替えるときは、名前の右にファイルの場所を書きます(例 \"audio/fanfare.mp3\")。空なら合成音。",
+    "fanfare": "",
+    "celebrate": "",
+    "pelican": "",
+    "seagull": "",
+    "shoo": "",
+    "rescue": "",
+    "bonk": "",
+    "boing": "",
+    "spin": "",
+    "vessel": "",
+    "scoop": "",
+    "drop": "",
+    "miss": "",
+    "smoke": "",
+    "pop": "",
+    "ding": "",
+    "beat": ""
+  }
 }
