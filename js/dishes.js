@@ -25,14 +25,16 @@ const Dishes = (() => {
    * つかまえた食材 { id: 個数 } から、一番近い料理を選ぶ。
    * 近さ = 料理の材料がどれだけそろったか(7割)
    *      + つかまえた食材のうち料理に使うものの割合(3割)
-   * 同じ点なら dishes.json で先に書いたものが選ばれる。
+   * 同じ点なら preferId(ペリカンの注文)の料理、
+   * それも無ければ dishes.json で先に書いたものが選ばれる。
    */
-  function choose(caught) {
+  function choose(caught, preferId) {
     const { dishes } = Data.get();
     const total = Object.values(caught).reduce((a, b) => a + b, 0);
-    if (total === 0) return pick(dishes);
+    const preferred = dishes.find(d => d.id === preferId);
+    if (total === 0) return preferred || pick(dishes);
 
-    let best = null, bestScore = -1;
+    let best = null, bestScore = -1, preferredScore = -1;
     dishes.forEach(dish => {
       const reqs = dish.ingredients || [];
       const used = new Set();
@@ -47,8 +49,28 @@ const Dishes = (() => {
       used.forEach(id => { usedCount += caught[id] || 0; });
       const score = coverage * 0.7 + (usedCount / total) * 0.3;
       if (score > bestScore + 1e-9) { bestScore = score; best = dish; }
+      if (dish === preferred) preferredScore = score;
     });
+    // 同じ点なら、注文の料理を選ぶ
+    if (preferred && preferredScore >= bestScore - 1e-9) return preferred;
     return best;
+  }
+
+  /** ペリカンの注文:料理を1つ選ぶ(前回と同じにならないように) */
+  let lastOrderId = null;
+  function pickOrder() {
+    const { dishes } = Data.get();
+    const pool = dishes.length > 1 ? dishes.filter(d => d.id !== lastOrderId) : dishes;
+    const d = pick(pool);
+    lastOrderId = d.id;
+    return d;
+  }
+
+  /** 料理に使う食材の id の一覧 */
+  function dishIngredientIds(dish) {
+    const ids = new Set();
+    (dish.ingredients || []).forEach(r => reqIds(r).forEach(id => ids.add(id)));
+    return ids;
   }
 
   /** つかまえた数で盛り付けを決める */
@@ -75,10 +97,20 @@ const Dishes = (() => {
 
   /**
    * つかまえた食材の名前リストから、空想レシピを1つ作る。
+   * dishId を渡すと、fantasy.json の dishExtras にあるその料理用の部品もまぜる。
    * 前回と同じ題名にならないように作り直す。
    */
-  function fantasy(names) {
-    const f = Data.get().fantasy;
+  function fantasy(names, dishId) {
+    const base = Data.get().fantasy;
+    // 料理ごとの部品(dishExtras)があれば、ふだんの部品にまぜる
+    const extra = (base.dishExtras && dishId && base.dishExtras[dishId]) || {};
+    const f = Object.assign({}, base);
+    ['titlePatterns', 'steps', 'comments'].forEach(k => {
+      if (Array.isArray(extra[k]) && extra[k].length) {
+        // 料理ごとの部品が出やすいように2回ずつ入れる
+        f[k] = (base[k] || []).concat(extra[k], extra[k]);
+      }
+    });
     let pool = names.slice();
     if (pool.length === 0) pool = shuffle(Data.get().ingredients.map(i => i.name)).slice(0, 3);
 
@@ -107,5 +139,5 @@ const Dishes = (() => {
     return result;
   }
 
-  return { choose, portion, usedIngredients, fantasy };
+  return { choose, pickOrder, dishIngredientIds, portion, usedIngredients, fantasy };
 })();

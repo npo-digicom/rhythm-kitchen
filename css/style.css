@@ -199,19 +199,32 @@ html, body {
   left: 16px;
   right: 16px;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   z-index: 40;
   pointer-events: none;
 }
+.hud-row { display: flex; align-items: center; gap: 10px; }
 .hud-icon { font-size: 1.6rem; line-height: 1; }
 #timer-bar {
+  position: relative;
   flex: 1;
   height: 22px;
   background: rgba(255, 255, 255, 0.9);
   border: 3px solid var(--wood);
   border-radius: 999px;
   overflow: hidden;
+}
+#timer-marks { position: absolute; inset: 0; }
+.timer-mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  margin-left: -2px;
+  background: var(--wood);
+  border-radius: 2px;
 }
 #timer-fill {
   height: 100%;
@@ -276,6 +289,155 @@ html, body {
 }
 .ing.caught .ing-label { display: none; }
 
+/* 器からこぼれた食材(タップで戻せる) */
+.loose {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.loose-body {
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  line-height: 1;
+}
+.loose-body img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.loose.tappable .loose-body {
+  background: rgba(255, 255, 255, 0.92);
+  border: 5px solid var(--c, #888);
+  box-shadow: 0 0 0 0 rgba(255, 210, 63, 0.9);
+  animation: loose-pulse 0.6s ease-out infinite;
+}
+@keyframes loose-pulse {
+  from { box-shadow: 0 0 0 0 rgba(255, 196, 0, 0.95); }
+  to   { box-shadow: 0 0 0 18px rgba(255, 196, 0, 0); }
+}
+.loose-hint {
+  position: absolute;
+  left: 50%;
+  top: -66px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #fff;
+  background: var(--orange);
+  border: 2px solid #fff;
+  border-radius: 999px;
+  padding: 0 10px;
+  line-height: 1.5;
+}
+/* 「セーフ!」などのひとこと */
+.pop-word {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #FFD23F;
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pop-word 1s ease-out forwards;
+}
+@keyframes pop-word {
+  0%   { transform: translate(-50%, -30%) scale(0.5); opacity: 0; }
+  25%  { transform: translate(-50%, -60%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -140%) scale(1); opacity: 0; }
+}
+
+/* カモメ */
+.gull {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 130px;
+  height: 84px;
+  z-index: 3;
+  will-change: transform;
+}
+.gull-art { position: absolute; inset: 0; animation: gull-bob 0.5s ease-in-out infinite alternate; }
+.gull.flip .gull-art { transform: scaleX(-1); }
+@keyframes gull-bob { from { translate: 0 -3px; } to { translate: 0 3px; } }
+.gull .wing { transform-box: fill-box; animation: flap 0.32s ease-in-out infinite alternate; }
+.gull .wing-back  { transform-origin: 100% 100%; }
+.gull .wing-front { transform-origin: 0% 100%; }
+@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-0.55); } }
+.gull-carry {
+  position: absolute;
+  right: -6px;
+  top: 46px;
+  width: 50px;
+  height: 50px;
+  font-size: 40px;
+  line-height: 50px;
+  text-align: center;
+  display: none;
+}
+.gull.flip .gull-carry { right: auto; left: -6px; }
+.gull.carrying .gull-carry { display: block; }
+.gull-carry img, .pelican-fly-carry img { width: 100%; height: 100%; object-fit: contain; }
+.gull-hint {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #fff;
+  background: #1565C0;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  padding: 0 12px;
+  line-height: 1.6;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* 助けに来るペリカン */
+.pelican-fly {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  z-index: 4;
+}
+.pelican-fly-art { position: absolute; inset: 0; animation: pelican-flap 0.3s ease-in-out infinite alternate; }
+.pelican-fly.flip .pelican-fly-art { transform: scaleX(-1); }
+@keyframes pelican-flap { from { translate: 0 -5px; } to { translate: 0 5px; } }
+.pelican-fly-carry {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 46px;
+  height: 46px;
+  font-size: 36px;
+  line-height: 46px;
+  text-align: center;
+}
+.pelican-fly.flip .pelican-fly-carry { right: auto; left: 0; }
+.pelican-fly .pelican-fly-speech {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1.05rem;
+  padding: 2px 12px;
+}
+.pelican-fly .pelican-fly-speech[hidden] { display: none; }
+
 /* 網 */
 .net {
   position: absolute;
@@ -328,7 +490,7 @@ html, body {
   25%      { transform: translateX(calc(-50% - 4px)) rotate(-1.5deg); }
   75%      { transform: translateX(calc(-50% + 4px)) rotate(1.5deg); }
 }
-.zaru {
+.vessel-art {
   position: absolute;
   left: 0;
   right: 0;
@@ -337,6 +499,7 @@ html, body {
   height: 92px;
   filter: drop-shadow(0 6px 6px rgba(40, 20, 0, 0.3));
 }
+.vessel-art .art > img { object-fit: contain; object-position: center bottom; }
 #pile {
   position: absolute;
   left: 0;
@@ -368,7 +531,7 @@ html, body {
 #catch-msg {
   position: absolute;
   left: 50%;
-  top: calc(52px + env(safe-area-inset-top, 0px));
+  top: calc(104px + env(safe-area-inset-top, 0px));
   transform: translate(-50%, -10px);
   z-index: 45;
   background: var(--paper);
@@ -414,6 +577,13 @@ html, body {
   from { transform: scale(0.3); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
 }
+.msg-text {
+  top: 30%;
+  padding: 0 16px;
+  font-size: 2.1rem;
+  line-height: 1.35;
+  -webkit-text-stroke: 2px var(--ink);
+}
 #finale-text.boom {
   font-size: 5rem;
   color: #FFD23F;
@@ -456,6 +626,104 @@ html, body {
   to   { transform: scale(12); opacity: 0; }
 }
 
+/* ── キャラクター・器の絵(画像があれば画像、なければダミー) ── */
+.art { position: relative; display: block; width: 100%; height: 100%; }
+.art > .art-dummy, .art > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.art > .art-dummy svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.art > img { object-fit: contain; }
+.art.has-img > .art-dummy { display: none; }
+
+/* 吹き出し */
+.speech {
+  position: relative;
+  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 22px;
+  padding: 8px 16px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.speech b { color: var(--orange); }
+.speech-big { font-size: 1.45rem; text-align: center; }
+
+/* 注文のチップ(ゲーム中、上のほう) */
+#order-chip {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 3px solid var(--orange);
+  border-radius: 999px;
+  padding: 2px 14px 2px 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.4;
+  max-width: 100%;
+}
+#order-chip[hidden] { display: none; }
+#order-chip b { color: var(--orange); }
+.order-chip-pelican { width: 40px; height: 40px; flex-shrink: 0; }
+
+/* 始まる前の注文 */
+.order-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 244, 226, 0.88);
+}
+.order-overlay[hidden] { display: none; }
+.order-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: big-in 0.4s cubic-bezier(.2, 1.6, .5, 1);
+}
+.order-pelican { width: 190px; height: 190px; animation: pelican-bob 1.2s ease-in-out infinite; }
+@keyframes pelican-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50%      { transform: translateY(-8px) rotate(-3deg); }
+}
+.order-card .speech::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  margin-left: -12px;
+  border: 12px solid transparent;
+  border-bottom: 14px solid var(--ink);
+  border-top: none;
+}
+.order-emoji { font-size: 2.4rem; letter-spacing: 0.1em; line-height: 1.2; text-align: center; }
+
+/* ゲーム中のペリカンのひとこと(左下から) */
+#pelican-pop {
+  position: absolute;
+  left: 8px;
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  z-index: 46;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+#pelican-pop[hidden] { display: none; }
+#pelican-pop.show { animation: pop-up 0.4s cubic-bezier(.2, 1.6, .5, 1); }
+@keyframes pop-up {
+  from { transform: translateY(40px) scale(0.6); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.pelican-pop-art { width: 96px; height: 96px; flex-shrink: 0; }
+#pelican-pop .speech { margin-bottom: 50px; white-space: nowrap; }
+
 /* ── ③ 完成 ───────────────────────────────────────────────── */
 .complete-inner {
   display: flex;
@@ -463,6 +731,57 @@ html, body {
   align-items: center;
   gap: 16px;
 }
+.order-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.order-result[hidden] { display: none; }
+.order-result-pelican { width: 92px; height: 92px; flex-shrink: 0; animation: pelican-bob 1s ease-in-out infinite; }
+.order-result .speech { flex: 1; font-size: 1.2rem; padding: 8px 12px; animation: big-in 0.5s cubic-bezier(.2, 1.6, .5, 1); }
+.order-result.match .speech { border-color: var(--orange); background: #FFF7D6; }
+
+#celebrate-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+.confetti {
+  position: absolute;
+  top: -20px;
+  width: 12px;
+  height: 18px;
+  border-radius: 3px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0%   { transform: translate(0, 0) rotate(0); opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(var(--dx), 105vh) rotate(var(--rot)); opacity: 0; }
+}
+.balloon {
+  position: absolute;
+  bottom: -70px;
+  font-size: 54px;
+  line-height: 1;
+  opacity: 0;
+  animation-name: balloon-rise;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+@keyframes balloon-rise {
+  0%   { transform: translate(0, 0); opacity: 1; }
+  50%  { transform: translate(var(--sway), -55vh); }
+  90%  { opacity: 1; }
+  100% { transform: translate(0, -110vh); opacity: 0; }
+}
+
 .complete-kicker {
   font-size: 1.25rem;
   font-weight: 900;
@@ -500,26 +819,22 @@ html, body {
   align-items: flex-end;
   justify-content: center;
 }
-.vessel-dish {
+.vessel-dish-art {
   position: absolute;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  background: #fff;
-  border: 5px solid var(--wood);
-  box-shadow: 0 8px 0 rgba(60, 30, 0, 0.18);
+  filter: drop-shadow(0 6px 4px rgba(60, 30, 0, 0.2));
 }
-.vessel.kobachi  .vessel-dish { width: 130px; height: 64px; border-radius: 10px 10px 65px 65px; border-top-width: 6px; }
-.vessel.hitosara .vessel-dish { width: 220px; height: 40px; border-radius: 50%; }
-.vessel.oozara   .vessel-dish { width: 276px; height: 48px; border-radius: 50%; }
+.vessel-dish-art .art > img { object-position: center bottom; }
 .vessel-food {
   position: absolute;
   left: 50%;
   line-height: 1;
 }
-.vessel.kobachi  { width: 130px; height: 140px; }
-.vessel.hitosara { width: 220px; height: 170px; }
-.vessel.oozara   { width: 276px; height: 225px; }
+.vessel.kobachi  { width: 170px; height: 150px; }
+.vessel.hitosara { width: 226px; height: 175px; }
+.vessel.oozara   { width: 280px; height: 230px; }
 
 .portion-badge {
   font-size: 1.3rem;

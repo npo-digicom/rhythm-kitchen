@@ -18,9 +18,11 @@ const Game = (() => {
     '</svg>';
 
   const PILE_DOM_MAX = 70;     // ザルに描く食材の最大数(多すぎると重くなるため)
+  // 器への入り方:すっと/くるっと/ふちに当たって落ちる/ボンボン跳ねて外へ/巻き込んで外へ
+  const ENTRY_MODES = ['sutto', 'kurutto', 'fuchi', 'bonbon', 'makikomi'];
 
   let S;                       // 設定(settings.json)
-  let field, layer, fx, basket, pile, timerFill, catchMsg, startCount, finaleText;
+  let field, layer, fx, basket, pile, timerFill, catchMsg, startCount, finaleText, msgText;
 
   // 状態
   let playing = false;
@@ -29,13 +31,28 @@ const Game = (() => {
   let gameTime = 0;
   let lastBeat = -1;
   let active = [];             // 画面にいる食材
-  let deck = [];               // 次に出す食材の山札
-  let comeback = [];           // にがした食材(しばらくしてまた出す)
-  let caught = {};             // { id: 個数 }
-  let pileCount = 0;
+  let appeared = {};           // { id: 出てきた回数 }(上限 maxAppear まで)
+  let lastSpawnId = null;
+  let lastSpawnAt = -99;
+  let comeback = [];           // にがした食材(しばらくしてまた出す。回数の上限の中だけ)
+  let phaseIndex = -1;         // いまの区間(settings.json の phases)
+  let vesselId = 'zaru';       // いまの器
+  let vesselDish = null;       // 器を決めたときの料理
+  let pileBottom = 70;         // 器の底から食材を積み始める高さ
+  let caught = {};             // { id: 個数 }(器の中+飛んでいる途中+こぼれて戻せる途中)
+  let basketItems = [];        // 器の中の食材 { ing, slotIndex, el }
+  let freeSlots = [];          // 空いた置き場所
+  let nextSlot = 0;
+  let loose = [];              // 器からこぼれて、タップで戻せる食材
+  let gull = null;             // いま来ているカモメ
+  let nextGullAt = null;       // 次にカモメが来る時間
+  let gullCount = 0;
   let onFinish = null;
   let catchTimer = null;
   let useBeatSound = true;
+  let order = null;            // ペリカンの注文(料理)
+  let orderIds = new Set();    // 注文の料理に使う食材
+  let popTimer = null;
 
   function init() {
     S = Data.get().settings;
@@ -48,7 +65,13 @@ const Game = (() => {
     catchMsg   = document.getElementById('catch-msg');
     startCount = document.getElementById('start-count');
     finaleText = document.getElementById('finale-text');
+    msgText    = document.getElementById('msg-text');
     field.addEventListener('pointerdown', onTap);
+    document.getElementById('btn-order-ok').addEventListener('click', () => {
+      Sound.unlock();
+      document.getElementById('order-overlay').hidden = true;
+      begin();
+    });
   }
 
   // ── 範囲と大きさ ────────────────────────────────────────
@@ -69,16 +92,56 @@ const Game = (() => {
   }
 
   // ── 開始 ────────────────────────────────────────────────
-  function start(finishCallback) {
+  /**
+   * 始める前に、ペリカンが注文を言う。「まかせて!」でゲーム開始。
+   */
+  function start(orderDish, finishCallback) {
     onFinish = finishCallback;
+    order = orderDish;
+    orderIds = Dishes.dishIngredientIds(order);
+    resetField();
+
+    document.getElementById('order-chip').hidden = true;
+    document.getElementById('order-pelican').innerHTML = Art.pelican();
+    document.getElementById('order-text').innerHTML =
+      escapeHTML(Data.get().settings.pelican.ask).replace('{dish}', `<b>${escapeHTML(order.name)}</b>`);
+    document.getElementById('order-emoji').textContent = (order.emoji || []).join(' ');
+    document.getElementById('order-overlay').hidden = false;
+    Sound.play('pelican');
+  }
+
+  function resetField() {
+    setVessel(Data.get().vessels.start || 'zaru');
+    vesselDish = null;
+    layer.innerHTML = '';
+    fx.innerHTML = '';
+    pile.innerHTML = '';
+    document.getElementById('pelican-pop').hidden = true;
+    timerFill.style.transform = 'scaleX(1)';
+  }
+
+  function begin() {
+    document.getElementById('order-chip-pelican').innerHTML = Art.pelican();
+    document.getElementById('order-chip-name').textContent = order.name;
+    document.getElementById('order-chip').hidden = false;
+    drawTimerMarks();
     playing = true;
     gameTime = 0;
     lastBeat = -1;
     active = [];
-    deck = [];
+    appeared = {};
+    lastSpawnId = null;
+    lastSpawnAt = -99;
     comeback = [];
+    phaseIndex = -1;
     caught = {};
-    pileCount = 0;
+    basketItems = [];
+    freeSlots = [];
+    nextSlot = 0;
+    loose = [];
+    gull = null;
+    nextGullAt = null;
+    gullCount = 0;
     layer.innerHTML = '';
     fx.innerHTML = '';
     pile.innerHTML = '';
@@ -118,6 +181,8 @@ const Game = (() => {
     const remain = Math.max(0, 1 - gameTime / S.gameSeconds);
     timerFill.style.transform = `scaleX(${remain})`;
 
+    updatePhase();
+
     const beatSec = 60 / S.bpm;
     const beat = Math.floor(gameTime / beatSec);
     if (beat > lastBeat) {
@@ -126,6 +191,8 @@ const Game = (() => {
     }
 
     updateIngredients(dt);
+    updateLoose(dt);
+    updateSeagull(dt);
 
     if (gameTime >= S.gameSeconds) {
       finish();
@@ -140,47 +207,164 @@ const Game = (() => {
     void basket.offsetWidth;
     basket.classList.add('beat');
 
-    const every = Math.max(1, S.spawnEveryBeats | 0);
+    const ph = phase();
+    const every = Math.max(1, ph.spawnEveryBeats | 0);
     const spawnUntil = S.gameSeconds - S.stopSpawningBeforeEndSec;
     if (beat >= 2 && beat % every === 0 && gameTime < spawnUntil) {
-      const p = gameTime / S.gameSeconds;
-      const max = Math.round(S.maxOnScreenStart + (S.maxOnScreenEnd - S.maxOnScreenStart) * p);
-      if (active.length < max) spawn();
+      if (active.length < ph.maxOnScreen && paceAllows(spawnUntil)) spawn();
     }
+  }
+
+  /**
+   * 食材の残り回数が終わりまで持つように、出すペースをならす。
+   * 画面に1つも無いときは、すぐ出す(何も無い時間を作らない)。
+   */
+  function paceAllows(spawnUntil) {
+    if (active.length === 0) return true;
+    if (S.appearance.pacing === false) return true;
+    const stock = Data.get().ingredients.reduce((n, x) => n + Math.max(0, maxAppear(x.id) - (appeared[x.id] || 0)), 0);
+    if (stock <= 0) return false;
+    const interval = Math.max(0, spawnUntil - gameTime) / stock;
+    return gameTime - lastSpawnAt >= interval * 0.9;
+  }
+
+  // ── 区間(前半・中盤・終盤) ─────────────────────────────
+  function phase() { return S.phases[Math.max(0, phaseIndex)]; }
+
+  function updatePhase() {
+    let i = 0;
+    S.phases.forEach((ph, k) => { if (gameTime >= ph.startSec) i = k; });
+    if (i === phaseIndex) return;
+    phaseIndex = i;
+    onPhaseStart(S.phases[i]);
+  }
+
+  function onPhaseStart(ph) {
+    if (ph.message) showBig(msgText, ph.message, 1800);
+    // 終盤の始め:それまでの食材にいちばん近い料理の器がやってくる
+    if (ph.seagulls && nextGullAt == null) nextGullAt = gameTime + S.seagull.firstDelaySec;
+    if (ph.vesselChange) {
+      vesselDish = Dishes.choose(caught, order && order.id);
+      changeVessel(vesselFor(vesselDish), Data.get().vessels.arriveMessage);
+    }
+  }
+
+  // ── 器 ──────────────────────────────────────────────────
+  function vesselFor(dish) {
+    const V = Data.get().vessels;
+    return (dish && V.dishToVessel[dish.id]) || V.start || 'zaru';
+  }
+  function vesselInfo(id) { return Data.get().vessels.vessels[id] || {}; }
+
+  function setVessel(id) {
+    vesselId = id;
+    document.getElementById('vessel-art').innerHTML = Art.vessel(id);
+    const pb = vesselInfo(id).pileBottom;
+    pileBottom = pb == null ? 70 : pb;
+    pile.style.bottom = pileBottom + 'px';
+  }
+
+  /**
+   * 器を入れ替える:食材がふわっと持ち上がり、古い器が去って新しい器が来て、
+   * 食材がそこへ移る。done は入れ替え終わりに呼ばれる。
+   */
+  function changeVessel(id, message, done) {
+    if (id === vesselId) { if (done) done(); return; }
+    const art = document.getElementById('vessel-art');
+    const label = vesselInfo(id).label || '器';
+    if (message) showBig(msgText, message.replace('{vessel}', label), 2000);
+    Sound.play('vessel');
+    const oldBottom = pileBottom;
+    // 食材は持ち上がる
+    pile.animate([
+      { transform: 'translateY(0)' },
+      { transform: 'translateY(-70px)', offset: 0.35 },
+      { transform: 'translateY(-70px)', offset: 0.65 },
+      { transform: 'translateY(0)' },
+    ], { duration: 1400, easing: 'ease-in-out' });
+    // 古い器は左へ、新しい器は右から
+    art.animate([
+      { transform: 'translateX(0)', opacity: 1 },
+      { transform: 'translateX(-130%) rotate(-8deg)', opacity: 0 },
+    ], { duration: 520, easing: 'ease-in' }).onfinish = () => {
+      setVessel(id);
+      // 積む高さが変わったぶん、持ち上がった位置からそのまま下りるように
+      pile.animate([{ marginBottom: (oldBottom - pileBottom) + 'px' }, { marginBottom: '0px' }],
+        { duration: 600, easing: 'ease-out' });
+      art.animate([
+        { transform: 'translateX(130%) rotate(8deg)', opacity: 0 },
+        { transform: 'translateX(-4%) rotate(-2deg)', opacity: 1, offset: 0.75 },
+        { transform: 'translateX(0)', opacity: 1 },
+      ], { duration: 620, easing: 'ease-out' }).onfinish = () => {
+        Sound.playDrop();
+        if (done) done();
+      };
+    };
+  }
+
+  // 区切りの位置に、時間のバーへ目印をつける
+  function drawTimerMarks() {
+    const marks = document.getElementById('timer-marks');
+    marks.innerHTML = '';
+    S.phases.forEach(ph => {
+      if (ph.startSec <= 0 || ph.startSec >= S.gameSeconds) return;
+      const m = document.createElement('span');
+      m.className = 'timer-mark';
+      // バーは右から減っていくので、のこり時間の位置に目印
+      m.style.left = (100 - (ph.startSec / S.gameSeconds) * 100) + '%';
+      marks.appendChild(m);
+    });
   }
 
   // ── 食材を出す ──────────────────────────────────────────
-  function shuffle(a) {
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
+  // ── 出てくる回数の上限 ─────────────────────────────────
+  function maxAppear(id) {
+    const ing = Data.get().byId[id];
+    return ing && ing.maxAppear != null ? ing.maxAppear : S.appearance.defaultMax;
+  }
+  function pendingComebacks(id) { return comeback.filter(c => c.id === id).length; }
+  /** あと何回出られるか(また出てくる予約の分は引いておく) */
+  function remainingAppear(id) {
+    return maxAppear(id) - (appeared[id] || 0) - pendingComebacks(id);
+  }
+
+  /** にがした・落ちた食材を「また出てくる」予約に入れる(上限の中だけ) */
+  function scheduleComeback(id) {
+    if (remainingAppear(id) > 0) comeback.push({ id, at: gameTime + S.respawnDelaySec });
   }
 
   function nextIngredient() {
+    const { byId, ingredients } = Data.get();
     const onScreen = new Set(active.map(a => a.ing.id));
     // にがした食材が戻ってくる時間になっていれば、それを優先
     const i = comeback.findIndex(c => c.at <= gameTime && !onScreen.has(c.id));
     if (i >= 0) {
       const id = comeback.splice(i, 1)[0].id;
-      return Data.get().byId[id];
+      return byId[id];
     }
-    const all = Data.get().ingredients;
-    for (let tries = 0; tries < all.length * 2; tries++) {
-      if (deck.length === 0) deck = shuffle(all.map(x => x.id));
-      const id = deck.pop();
-      if (!onScreen.has(id)) return Data.get().byId[id];
+    // 残り回数が多いもの・注文の料理に使うものほど出やすい
+    const favor = Number(S.pelican.orderFavor) || 1;
+    const cands = ingredients.filter(x => !onScreen.has(x.id) && remainingAppear(x.id) > 0);
+    const pool = cands.length > 1 ? cands.filter(x => x.id !== lastSpawnId) : cands;
+    if (pool.length === 0) return null;
+    const w = pool.map(x => remainingAppear(x.id) * (orderIds.has(x.id) ? favor : 1));
+    let r = Math.random() * w.reduce((a, b) => a + b, 0);
+    for (let k = 0; k < pool.length; k++) {
+      r -= w[k];
+      if (r <= 0) return pool[k];
     }
-    return null;
+    return pool[pool.length - 1];
   }
 
   function spawn() {
     const ing = nextIngredient();
     if (!ing) return;
+    appeared[ing.id] = (appeared[ing.id] || 0) + 1;
+    lastSpawnId = ing.id;
+    lastSpawnAt = gameTime;
     const g = geometry();
     const motionDef = Data.get().motions[ing.motion] || {};
-    const seconds = (motionDef.seconds || 8) / (S.speedScale || 1);
+    const seconds = (motionDef.seconds || 8) / ((S.speedScale || 1) * (phase().speed || 1));
 
     const el = document.createElement('div');
     el.className = 'ing';
@@ -213,9 +397,9 @@ const Game = (() => {
       const r = Motions.update(a.motion, dt);
       place(a, r);
       if (r.done) {
-        // にがしても失敗にしない:しばらくしたら、また出てくる
+        // にがしても失敗にしない:回数の上限の中なら、しばらくしてまた出てくる
         a.el.remove();
-        comeback.push({ id: a.ing.id, at: gameTime + S.respawnDelaySec });
+        scheduleComeback(a.ing.id);
         return false;
       }
       return true;
@@ -224,6 +408,7 @@ const Game = (() => {
 
   // ── タップ ──────────────────────────────────────────────
   function onTap(e) {
+    if (e.target.closest('button')) return;   // 注文の「まかせて!」ボタンなど
     e.preventDefault();
     Sound.unlock();
     if (!playing) return;
@@ -231,6 +416,21 @@ const Game = (() => {
     const x = e.clientX - fr.left;
     const y = e.clientY - fr.top;
     ripple(x, y);
+
+    // いちばん先はカモメ(タップで追い払う)
+    if (gull && (gull.state === 'approach' || gull.state === 'escape') &&
+        Math.hypot(gull.x - x, gull.y - y) < S.seagull.tapRadius) {
+      shooSeagull();
+      return;
+    }
+
+    // こぼれた食材が先(タップで器に戻す)。当たりの範囲は広め
+    let lb = null, lbD = Infinity;
+    loose.forEach(l => {
+      const d = Math.hypot(l.x - x, l.y - y);
+      if (d < 85 && d < lbD) { lb = l; lbD = d; }
+    });
+    if (lb) { rescueLoose(lb); return; }
 
     // 見た目より大きい範囲で当たりにする(半径 + 45px)
     let best = null, bestD = Infinity;
@@ -252,7 +452,7 @@ const Game = (() => {
     setTimeout(() => r.remove(), 500);
   }
 
-  // ── 網ですくってザルへ ──────────────────────────────────
+  // ── 網ですくってザル(器)へ ────────────────────────────
   function scoop(a) {
     active = active.filter(x => x !== a);
     a.el.classList.add('caught');
@@ -275,23 +475,192 @@ const Game = (() => {
       { transform: at(0, -30, -40, 0.9), opacity: 0 },
     ], { duration: 520, easing: 'ease-out' }).onfinish = () => net.remove();
 
-    // 食材がザルへ飛んでいく
-    const target = pileTarget();
-    const half = a.size / 2;
-    const from = `translate3d(${a.x - half}px, ${a.y - half}px, 0)`;
-    const midX = (a.x + target.x) / 2;
-    const midY = Math.min(a.y, target.y) - 90;
-    const anim = a.el.animate([
-      { transform: from + ' scale(1)', offset: 0 },
-      { transform: `translate3d(${a.x - half}px, ${a.y - half - 30}px, 0) scale(1.1)`, offset: 0.25 },
-      { transform: `translate3d(${midX - half}px, ${midY - half}px, 0) scale(0.8) rotate(180deg)`, offset: 0.6 },
-      { transform: `translate3d(${target.x - half}px, ${target.y - half}px, 0) scale(0.45) rotate(360deg)`, offset: 1 },
-    ], { duration: 780, easing: 'ease-in-out', fill: 'forwards' });
-    anim.onfinish = () => {
+    // 入り方を決める(食材ごとの出やすさ)
+    let mode = pickEntry(a.ing);
+    if (mode === 'makikomi' && !basketItems.some(b => b.el)) mode = 'bonbon';
+
+    // 食材が器へ飛んでいく(ふちに当たるときは、ふちをめがけて)
+    const slotIndex = takeSlot();
+    const target = mode === 'fuchi' ? rimPoint(a.x) : slotPos(slotIndex);
+    flyTo(a.el, a.x, a.y, a.size, target, 780, () => {
       a.el.remove();
-      addToPile(a.ing, target);
+      entryLand(mode, a.ing, slotIndex, target);
+    });
+  }
+
+  /** 食材の丸を、放物線で target へ飛ばす */
+  function flyTo(el, x, y, size, target, ms, done) {
+    const half = size / 2;
+    const midX = (x + target.x) / 2;
+    const midY = Math.min(y, target.y) - 90;
+    const sc = 44 / size;   // 器の中では小さく
+    el.animate([
+      { transform: `translate3d(${x - half}px, ${y - half}px, 0) scale(1)`, offset: 0 },
+      { transform: `translate3d(${x - half}px, ${y - half - 30}px, 0) scale(1.1)`, offset: 0.25 },
+      { transform: `translate3d(${midX - half}px, ${midY - half}px, 0) scale(0.8) rotate(180deg)`, offset: 0.6 },
+      { transform: `translate3d(${target.x - half}px, ${target.y - half}px, 0) scale(${sc}) rotate(360deg)`, offset: 1 },
+    ], { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).onfinish = done;
+  }
+
+  let forcedEntry = null;   // 動作確認用
+  function pickEntry(ing) {
+    if (forcedEntry) return forcedEntry;
+    const E = S.entry;
+    const w = Object.assign({}, E.weights, ing.entry || {});
+    const trouble = phase().troubleScale == null ? 1 : phase().troubleScale;
+    ['fuchi', 'bonbon', 'makikomi'].forEach(k => { w[k] = (Number(w[k]) || 0) * trouble; });
+    const keys = ENTRY_MODES.filter(k => Number(w[k]) > 0);
+    const total = keys.reduce((n, k) => n + Number(w[k]), 0);
+    if (!total) return 'sutto';
+    let r = Math.random() * total;
+    for (const k of keys) { r -= Number(w[k]); if (r <= 0) return k; }
+    return 'sutto';
+  }
+
+  /** 器に着いたところで、入り方ごとの動き */
+  function entryLand(mode, ing, slotIndex, target) {
+    if (mode === 'sutto') {
+      addToBasket(ing, slotIndex);
+      Sound.playDrop();
+    } else if (mode === 'kurutto') {
+      // その場でくるっと宙返りしてから入る
+      const el = makeLooseEl(ing, false);
+      const tr = (dy, rot, s) => `translate3d(${target.x}px, ${target.y + dy}px, 0) rotate(${rot}deg) scale(${s})`;
+      Sound.play('spin');
+      el.animate([
+        { transform: tr(0, 0, 1) },
+        { transform: tr(-60, 200, 1.2), offset: 0.45 },
+        { transform: tr(-30, 330, 1.1), offset: 0.7 },
+        { transform: tr(0, 360, 1) },
+      ], { duration: 650, easing: 'ease-in-out' }).onfinish = () => {
+        el.remove();
+        addToBasket(ing, slotIndex);
+        Sound.playDrop();
+      };
+    } else if (mode === 'fuchi') {
+      // ふちに当たって、下へ落ちていく(落ちる途中でタップすれば拾える)
+      releaseSlot(slotIndex);
+      Sound.play('bonk');
+      const dir = target.x < field.clientWidth / 2 ? -1 : 1;
+      addLoose(ing, fallPath(target.x, target.y, dir));
+    } else if (mode === 'bonbon') {
+      // ボンボン跳ねて外へ(跳ねている間にタップすれば戻せる)
+      releaseSlot(slotIndex);
+      Sound.play('boing');
+      const dir = target.x < field.clientWidth / 2 ? -1 : 1;
+      addLoose(ing, bouncePath(target.x, target.y, dir));
+    } else if (mode === 'makikomi') {
+      // 弾いて、中の別の食材を1つ巻き込んで外へ(どちらもタップで戻せる)
+      releaseSlot(slotIndex);
+      Sound.play('boing');
+      const victims = basketItems.filter(b => b.el);
+      const v = victims[Math.floor(Math.random() * victims.length)];
+      const vp = elCenter(v.el);
+      removeFromBasket(v);
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      addLoose(ing, bouncePath(target.x, target.y, dir));
+      addLoose(v.ing, bouncePath(vp.x, vp.y, -dir));
+    }
+  }
+
+  // ── 器からこぼれた食材(タップで戻せる) ─────────────────
+  function makeLooseEl(ing, tappable) {
+    const el = document.createElement('div');
+    el.className = 'loose' + (tappable ? ' tappable' : '');
+    el.style.setProperty('--c', ing.color);
+    el.innerHTML = `<div class="loose-body">${ingredientIconHTML(ing)}</div>` +
+      (tappable ? '<div class="loose-hint">タップ!</div>' : '');
+    fx.appendChild(el);
+    return el;
+  }
+
+  function addLoose(ing, path) {
+    const el = makeLooseEl(ing, true);
+    const l = { ing, el, body: el.querySelector('.loose-body'), path, t: 0, dur: S.entry.rescueSec, x: 0, y: 0 };
+    loose.push(l);
+    placeLoose(l);
+    return l;
+  }
+
+  function placeLoose(l) {
+    const p = l.path(Math.min(1, l.t / l.dur), l.t);
+    l.x = p.x;
+    l.y = p.y;
+    l.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+    // 回すのは食材だけ(「タップ!」の札は回さない)
+    l.body.style.transform = `rotate(${p.rot || 0}deg)`;
+  }
+
+  function updateLoose(dt) {
+    loose = loose.filter(l => {
+      l.t += dt;
+      placeLoose(l);
+      if (l.t < l.dur) return true;
+      // 間に合わなかった:器からは出ていくが、回数の上限の中ならまた現れる
+      l.el.remove();
+      caught[l.ing.id] = Math.max(0, (caught[l.ing.id] || 0) - 1);
+      scheduleComeback(l.ing.id);
+      return false;
+    });
+  }
+
+  /** こぼれた食材をタップして戻す */
+  function rescueLoose(l, quiet) {
+    loose = loose.filter(x => x !== l);
+    const slotIndex = takeSlot();
+    const to = slotPos(slotIndex);
+    if (!quiet) {
+      Sound.play('rescue');
+      popWord(l.x, l.y - 40, 'セーフ!');
+    }
+    l.el.classList.remove('tappable');
+    const hint = l.el.querySelector('.loose-hint');
+    if (hint) hint.remove();
+    l.el.animate([
+      { transform: `translate3d(${l.x}px, ${l.y}px, 0) scale(1.2)` },
+      { transform: `translate3d(${(l.x + to.x) / 2}px, ${Math.min(l.y, to.y) - 80}px, 0) scale(1.1) rotate(180deg)`, offset: 0.5 },
+      { transform: `translate3d(${to.x}px, ${to.y}px, 0) scale(1) rotate(360deg)` },
+    ], { duration: quiet ? 300 : 600, easing: 'ease-in-out', fill: 'forwards' }).onfinish = () => {
+      l.el.remove();
+      addToBasket(l.ing, slotIndex);
       Sound.playDrop();
     };
+  }
+
+  // 落ちる道すじ:ちょっと跳ね上がってから、画面の下へ
+  function fallPath(x0, y0, dir) {
+    const dur = S.entry.rescueSec;
+    const yEnd = field.clientHeight + 40;
+    const v0 = -170;
+    const g = 2 * (yEnd - y0 - v0 * dur) / (dur * dur);
+    const xs = Math.min(field.clientWidth - 34, Math.max(34, x0));
+    return (p, t) => ({
+      x: Math.min(field.clientWidth - 30, Math.max(30, xs + dir * 46 * p)),
+      y: y0 + v0 * t + 0.5 * g * t * t,
+      rot: dir * 220 * p,
+    });
+  }
+
+  // 跳ねる道すじ:3回ボンボン跳ねながら、画面の横へ出ていく
+  function bouncePath(x0, y0, dir) {
+    const w = field.clientWidth;
+    const dist = dir > 0 ? w + 40 - x0 : x0 + 40;
+    const hops = 3;
+    return p => ({
+      x: x0 + dir * dist * p,
+      y: y0 - Math.abs(Math.sin(p * hops * Math.PI)) * 110 * (1 - p * 0.4),
+      rot: dir * 360 * p,
+    });
+  }
+
+  function popWord(x, y, text) {
+    const w = document.createElement('div');
+    w.className = 'pop-word';
+    w.textContent = text;
+    w.style.left = x + 'px';
+    w.style.top = y + 'px';
+    fx.appendChild(w);
+    setTimeout(() => w.remove(), 1000);
   }
 
   function showCatch(ing, isNew) {
@@ -302,8 +671,11 @@ const Game = (() => {
     catchTimer = setTimeout(() => catchMsg.classList.remove('show'), 1400);
   }
 
-  // ザルの中の山:下の段から順に積んでいく(7個,6個,5個…)
+  // ── 器の中 ──────────────────────────────────────────────
+  // 置き場所:下の段から順に積んでいく(7個,6個,5個…)。空いた場所は使い回す
+  const slotCache = [];
   function pileSlot(k) {
+    if (slotCache[k]) return slotCache[k];
     const per = 28;
     const layerN = Math.floor(k / per);
     let n = k % per, row = 0, cap = 7;
@@ -311,30 +683,253 @@ const Game = (() => {
     const spacing = 32;
     const sx = (n - (cap - 1) / 2) * spacing + (Math.random() * 10 - 5) + (layerN % 2 ? 14 : 0);
     const sy = row * 22 + layerN * 8 + Math.random() * 4;
-    return { sx, sy };
+    return (slotCache[k] = { sx, sy });
   }
 
-  function pileTarget() {
+  function takeSlot() {
+    if (freeSlots.length) {
+      freeSlots.sort((a, b) => a - b);
+      return freeSlots.shift();
+    }
+    return nextSlot++;
+  }
+  function releaseSlot(k) { if (!freeSlots.includes(k)) freeSlots.push(k); }
+
+  /** 置き場所の、画面の中での位置 */
+  function slotPos(k) {
     const fr = field.getBoundingClientRect();
     const br = basket.getBoundingClientRect();
-    const slot = pileSlot(pileCount);
-    pileCount++;
+    const slot = pileSlot(k);
     return {
-      slot,
       x: br.left - fr.left + br.width / 2 + slot.sx,
-      y: br.bottom - fr.top - 70 - slot.sy - 22,
+      y: br.bottom - fr.top - pileBottom - slot.sy - 22,
     };
   }
 
-  function addToPile(ing, target) {
-    if (pile.children.length >= PILE_DOM_MAX) return;
-    const item = document.createElement('div');
-    item.className = 'pile-item';
-    item.style.left = `calc(50% + ${target.slot.sx}px)`;
-    item.style.bottom = target.slot.sy + 'px';
-    item.style.zIndex = String(pileCount);
-    item.innerHTML = ingredientIconHTML(ing);
-    pile.appendChild(item);
+  /** 器のふち(左か右の、近いほう) */
+  function rimPoint(fromX) {
+    const fr = field.getBoundingClientRect();
+    const br = basket.getBoundingClientRect();
+    const cx = br.left - fr.left + br.width / 2;
+    const dir = fromX < cx ? -1 : 1;
+    return { x: cx + dir * br.width * 0.46, y: br.bottom - fr.top - 86 };
+  }
+
+  function elCenter(el) {
+    const fr = field.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - fr.left + r.width / 2, y: r.top - fr.top + r.height / 2 };
+  }
+
+  function addToBasket(ing, slotIndex) {
+    const item = { ing, slotIndex, el: null };
+    if (pile.querySelectorAll('.pile-item').length < PILE_DOM_MAX) {
+      const slot = pileSlot(slotIndex);
+      const el = document.createElement('div');
+      el.className = 'pile-item';
+      el.style.left = `calc(50% + ${slot.sx}px)`;
+      el.style.bottom = slot.sy + 'px';
+      el.style.zIndex = String(slotIndex + 1);
+      el.innerHTML = ingredientIconHTML(ing);
+      pile.appendChild(el);
+      item.el = el;
+    }
+    basketItems.push(item);
+    return item;
+  }
+
+  function removeFromBasket(item) {
+    basketItems = basketItems.filter(b => b !== item);
+    if (item.el) item.el.remove();
+    releaseSlot(item.slotIndex);
+  }
+
+  // ── カモメ(器の食材を1つくわえて逃げようとする) ───────
+  const GULL_W = 130, GULL_H = 84;
+
+  function updateSeagull(dt) {
+    const G = S.seagull;
+    if (!gull) {
+      if (!phase().seagulls || nextGullAt == null) return;
+      // 終わり間近には来ない(逃げる時間が足りないため)
+      if (gameTime >= nextGullAt && gameTime < S.gameSeconds - G.approachSec - G.escapeSec - 1.5) spawnSeagull();
+      return;
+    }
+    if (gull.state !== 'approach' && gull.state !== 'escape') return;   // 演出中
+    gull.t += dt;
+    if (gull.state === 'approach') {
+      const p = Math.min(1, gull.t / G.approachSec);
+      const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      const target = basketItems.includes(gull.item) && gull.item.el ? elCenter(gull.item.el) : gull.target;
+      gull.target = target;
+      placeGull(gull.sx + (target.x - gull.sx) * e, gull.sy + (target.y - 34 - gull.sy) * e - Math.sin(p * Math.PI) * 50);
+      if (p >= 1) grabItem();
+    } else {
+      const p = Math.min(1, gull.t / G.escapeSec);
+      placeGull(gull.gx + (gull.ex - gull.gx) * p, gull.gy + (gull.ey - gull.gy) * p + Math.sin(gull.t * 7) * 10);
+      if (p >= 1) pelicanRescue();
+    }
+  }
+
+  function spawnSeagull() {
+    const G = S.seagull;
+    const items = basketItems.filter(b => b.el);
+    if (items.length === 0) { nextGullAt = gameTime + 2; return; }
+    const item = items[Math.floor(Math.random() * items.length)];
+    const w = field.clientWidth;
+    const dir = Math.random() < 0.5 ? 1 : -1;     // 1 = 左から右へ
+    const el = document.createElement('div');
+    el.className = 'gull' + (dir < 0 ? ' flip' : '');
+    el.innerHTML = `<div class="gull-art">${Art.seagull()}</div><div class="gull-carry"></div>` +
+      (gullCount === 0 ? '<div class="gull-hint">タップで追い払おう!</div>' : '');
+    fx.appendChild(el);
+    gullCount++;
+    const top = document.getElementById('hud').getBoundingClientRect().bottom - field.getBoundingClientRect().top;
+    gull = {
+      el, item, dir, t: 0, state: 'approach',
+      sx: dir > 0 ? -GULL_W : w + GULL_W, sy: top + 120,
+      target: elCenter(item.el),
+      ex: dir > 0 ? w - 80 : 80, ey: top + 150,    // 逃げる先(画面の上のほう。まだ見えるところ)
+      x: 0, y: 0,
+    };
+    placeGull(gull.sx, gull.sy);
+    Sound.play('seagull');
+  }
+
+  function placeGull(x, y) {
+    gull.x = x;
+    gull.y = y;
+    gull.el.style.transform = `translate3d(${x - GULL_W / 2}px, ${y - GULL_H / 2}px, 0)`;
+  }
+
+  // 食材をくわえる
+  function grabItem() {
+    // ねらっていた食材が、もう器に無いとき(こぼれた等)は別の食材。何も無ければ手ぶらで帰る
+    if (!basketItems.includes(gull.item)) {
+      const others = basketItems.filter(b => b.el);
+      if (others.length === 0) { gull.state = 'shooed'; flyAway(gull, 900); return; }
+      gull.item = others[Math.floor(Math.random() * others.length)];
+    }
+    const item = gull.item;
+    const ing = item.ing;
+    // 器から取る(caught はそのまま。食材はかならず戻ってくる)
+    removeFromBasket(item);
+    gull.ing = ing;
+    gull.el.querySelector('.gull-carry').innerHTML = ingredientIconHTML(ing);
+    gull.el.classList.add('carrying');
+    gull.state = 'escape';
+    gull.t = 0;
+    gull.gx = gull.x;
+    gull.gy = gull.y;
+    // 逃げるのは来た方向の先へ
+    Sound.play('seagull');
+  }
+
+  /** カモメをタップ:追い払って、食材を器に戻す */
+  function shooSeagull() {
+    const g = gull;
+    g.state = 'shooed';
+    Sound.play('shoo');
+    popWord(g.x, g.y - 50, 'えいっ!');
+    const hint = g.el.querySelector('.gull-hint');
+    if (hint) hint.remove();
+    if (g.ing) dropBackToBasket(g.ing, g.x, g.y + 30);
+    g.el.classList.remove('carrying');
+    flyAway(g, 600);
+    setTimeout(() => {
+      Sound.play('pelican');
+      pelicanSay(S.pelican.thanks, 1800);
+    }, 350);
+  }
+
+  // カモメが画面の外へ飛んでいく
+  function flyAway(g, ms) {
+    const away = g.dir > 0 ? -1 : 1;   // 来た方向へ戻る
+    const x2 = g.x + away * (field.clientWidth + GULL_W);
+    g.el.classList.toggle('flip', away < 0);
+    g.el.animate([
+      { transform: `translate3d(${g.x - GULL_W / 2}px, ${g.y - GULL_H / 2}px, 0)` },
+      { transform: `translate3d(${x2 - GULL_W / 2}px, ${g.y - GULL_H / 2 - 260}px, 0)` },
+    ], { duration: ms, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
+      g.el.remove();
+      if (gull === g) endGull();
+    };
+  }
+
+  function endGull() {
+    gull = null;
+    const [a, b] = S.seagull.intervalSec || [8, 12];
+    nextGullAt = gameTime + a + Math.random() * Math.max(0, b - a);
+  }
+
+  /** 食材を (x, y) から器へ戻す */
+  function dropBackToBasket(ing, x, y) {
+    const slotIndex = takeSlot();
+    const to = slotPos(slotIndex);
+    const el = makeLooseEl(ing, false);
+    el.animate([
+      { transform: `translate3d(${x}px, ${y}px, 0)` },
+      { transform: `translate3d(${(x + to.x) / 2}px, ${Math.min(y, to.y) - 40}px, 0) rotate(180deg)`, offset: 0.4 },
+      { transform: `translate3d(${to.x}px, ${to.y}px, 0) rotate(360deg)` },
+    ], { duration: 700, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
+      el.remove();
+      addToBasket(ing, slotIndex);
+      Sound.playDrop();
+    };
+  }
+
+  /** 間に合わなかったら、ペリカンが陽気に飛んできて取り返してくれる */
+  function pelicanRescue() {
+    const g = gull;
+    g.state = 'rescue';
+    const hint = g.el.querySelector('.gull-hint');
+    if (hint) hint.remove();
+    const w = field.clientWidth;
+    const from = g.dir > 0 ? 1 : -1;   // カモメの行く先の側から来る
+    const pel = document.createElement('div');
+    pel.className = 'pelican-fly' + (from > 0 ? ' flip' : '');
+    pel.innerHTML = `<div class="pelican-fly-art">${Art.pelican()}</div><div class="pelican-fly-carry"></div>` +
+      `<div class="speech pelican-fly-speech" hidden></div>`;
+    fx.appendChild(pel);
+    const P = 120;
+    const at = (x, y) => `translate3d(${x - P / 2}px, ${y - P / 2}px, 0)`;
+    const sx = from > 0 ? w + P : -P, sy = g.y + 160;
+    const meetX = g.x - from * 30, meetY = g.y + 20;
+    Sound.play('pelican');
+    pel.animate([{ transform: at(sx, sy) }, { transform: at(meetX, meetY) }],
+      { duration: 650, easing: 'ease-out', fill: 'forwards' }).onfinish = () => {
+      // カモメはびっくりして逃げ、食材はペリカンのくちばしへ
+      popWord(g.x, g.y - 50, 'ギャッ!');
+      Sound.play('seagull');
+      g.el.classList.remove('carrying');
+      const ing = g.ing;
+      pel.querySelector('.pelican-fly-carry').innerHTML = ingredientIconHTML(ing);
+      flyAway(g, 500);
+      const sp = pel.querySelector('.pelican-fly-speech');
+      sp.textContent = S.pelican.rescue;
+      sp.hidden = false;
+      // 器へ運ぶ
+      const slotIndex = takeSlot();
+      const to = slotPos(slotIndex);
+      pel.animate([{ transform: at(meetX, meetY) }, { transform: at(to.x, to.y - 70) }],
+        { duration: 900, delay: 350, easing: 'ease-in-out', fill: 'forwards' }).onfinish = () => {
+        pel.querySelector('.pelican-fly-carry').innerHTML = '';
+        addToBasket(ing, slotIndex);
+        Sound.play('rescue');
+        popWord(to.x, to.y - 90, 'おかえり!');
+        pel.animate([{ transform: at(to.x, to.y - 70) }, { transform: at(to.x + from * (w + P), to.y - 420) }],
+          { duration: 800, delay: 500, easing: 'ease-in', fill: 'forwards' }).onfinish = () => pel.remove();
+      };
+    };
+  }
+
+  /** ゲームが終わるとき:カモメがくわえている食材は器へ戻す */
+  function clearSeagull() {
+    if (!gull) return;
+    const g = gull;
+    if (g.ing && (g.state === 'escape')) dropBackToBasket(g.ing, g.x, g.y + 30);
+    if (g.state === 'approach' || g.state === 'escape') flyAway(g, 500);
+    gull = null;
   }
 
   // ── 終了:煙がもくもく →「ボン!」→ チン! ─────────────────
@@ -351,17 +946,33 @@ const Game = (() => {
         .onfinish = () => a.el.remove();
     });
     active = [];
+    // こぼれている途中の食材は、やさしく器に戻す
+    loose.slice().forEach(l => rescueLoose(l, true));
+    clearSeagull();
 
     showBig(finaleText, 'そこまで!', 0);
 
-    const later = (ms, fn) => setTimeout(fn, ms);
-    later(1300, () => {
+    // 最後に料理を決める。器を決めたあとで料理が変わったら、完成の前に器を入れ替える
+    const dish = Dishes.choose(caught, order && order.id);
+    setTimeout(() => {
       finaleText.hidden = true;
+      if (vesselDish && vesselFor(dish) !== vesselId) {
+        changeVessel(vesselFor(dish), Data.get().vessels.changeMessage, () => setTimeout(() => cook(dish), 500));
+      } else {
+        cook(dish);
+      }
+    }, 1300);
+  }
+
+  // 煙がもくもく →「ボン!」→ チン! → 完成画面へ
+  function cook(dish) {
+    const later = (ms, fn) => setTimeout(fn, ms);
+    later(0, () => {
       basket.classList.add('shake');
       Sound.playSmoke();
       smokePuffs();
     });
-    later(3000, () => {
+    later(1700, () => {
       basket.classList.remove('shake');
       pile.classList.add('gone');
       flash();
@@ -369,11 +980,11 @@ const Game = (() => {
       showBig(finaleText, 'ボン!', 0);
       Sound.playPop();
     });
-    later(3800, () => Sound.playDing());
-    later(4900, () => {
+    later(2500, () => Sound.playDing());
+    later(3600, () => {
       finaleText.hidden = true;
       finaleText.classList.remove('boom');
-      if (onFinish) onFinish({ caught: Object.assign({}, caught) });
+      if (onFinish) onFinish({ caught: Object.assign({}, caught), order, dish });
     });
   }
 
@@ -408,6 +1019,20 @@ const Game = (() => {
     setTimeout(() => f.remove(), 800);
   }
 
+  // ── ペリカンのひとこと ─────────────────────────────────
+  function pelicanSay(text, ms) {
+    const box = document.getElementById('pelican-pop');
+    const art = document.getElementById('pelican-pop-art');
+    if (!art.firstChild) art.innerHTML = Art.pelican();
+    document.getElementById('pelican-pop-text').textContent = text;
+    box.hidden = false;
+    box.classList.remove('show');
+    void box.offsetWidth;
+    box.classList.add('show');
+    clearTimeout(popTimer);
+    popTimer = setTimeout(() => { box.hidden = true; }, ms || 1800);
+  }
+
   /** ゲームを途中でやめる(画面を離れるとき用) */
   function stop() {
     playing = false;
@@ -416,5 +1041,18 @@ const Game = (() => {
     Sound.stopBGM();
   }
 
-  return { init, start, stop };
+  /** 動作確認用:時間を sec 秒すすめる(開発者ツールで Game.debugSkip(30) など) */
+  function debugSkip(sec) { gameTime += sec; }
+  /** 動作確認用:いまの状態 */
+  function debugState() {
+    return { gameTime, phase: phase() && phase().id, appeared, active: active.length,
+      basket: basketItems.length, loose: loose.length, caught: Object.assign({}, caught) };
+  }
+
+  /** 動作確認用:入り方を固定する(Game.debugForceEntry('bonbon') など。null で元に戻す) */
+  function debugForceEntry(mode) { forcedEntry = mode; }
+  /** 動作確認用:すぐにカモメを呼ぶ */
+  function debugSeagull() { if (!gull) nextGullAt = gameTime; }
+
+  return { init, start, stop, pelicanSay, debugSkip, debugState, debugForceEntry, debugSeagull };
 })();
