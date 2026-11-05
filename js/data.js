@@ -47,12 +47,15 @@ const Data = (() => {
         { id: 'middle', startSec: 30, maxOnScreen: 4, spawnEveryBeats: 2, speed: 1.15 },
         { id: 'final', startSec: 60, maxOnScreen: 3, spawnEveryBeats: 2, speed: 1, vesselChange: true, seagulls: true },
       ],
-      appearance: {},
+      appearance: {}, entry: {},
       respawnDelaySec: 4, stopSpawningBeforeEndSec: 4,
       zukanStorageKey: 'rhythmKitchen.zukan.v1',
       pelican: {}, images: {}, sounds: {},
     }, raw.settings);
     store.settings.appearance = Object.assign({ defaultMax: 2 }, store.settings.appearance);
+    store.settings.entry = Object.assign({ rescueSec: 2 }, store.settings.entry);
+    store.settings.entry.weights = Object.assign(
+      { sutto: 45, kurutto: 25, fuchi: 10, bonbon: 12, makikomi: 8 }, store.settings.entry.weights);
     store.settings.phases = store.settings.phases.slice().sort((a, b) => a.startSec - b.startSec)
       .map(ph => Object.assign({ maxOnScreen: 3, spawnEveryBeats: 2, speed: 1, message: '' }, ph));
     store.settings.pelican = Object.assign({

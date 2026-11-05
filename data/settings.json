@@ -10,7 +10,7 @@
     "beatSoundWithBgm": false
   },
   "speedScale": 1.0,
-  "_memo_phases": "90秒を3つに分けます。startSec 秒から次の区切りまでがその区間。maxOnScreen=同時に出る数、spawnEveryBeats=何拍ごとに出すか、speed=速さ(1が基本)。vesselChange=区間の始めにザルが料理の器に変わる、seagulls=カモメが来る。",
+  "_memo_phases": "90秒を3つに分けます。startSec 秒から次の区切りまでがその区間。maxOnScreen=同時に出る数、spawnEveryBeats=何拍ごとに出すか、speed=速さ(1が基本)。vesselChange=区間の始めにザルが料理の器に変わる、seagulls=カモメが来る。 troubleScale=ふちに当たる・跳ねて外へ・巻き込みの出やすさの倍率(0にすると起きない)。",
   "phases": [
     {
       "id": "early",
@@ -19,7 +19,8 @@
       "maxOnScreen": 2,
       "spawnEveryBeats": 3,
       "speed": 0.85,
-      "message": ""
+      "message": "",
+      "troubleScale": 0.4
     },
     {
       "id": "middle",
@@ -28,7 +29,8 @@
       "maxOnScreen": 4,
       "spawnEveryBeats": 2,
       "speed": 1.15,
-      "message": "にぎやかになってきた!"
+      "message": "にぎやかになってきた!",
+      "troubleScale": 1.0
     },
     {
       "id": "final",
@@ -39,13 +41,25 @@
       "speed": 1.0,
       "message": "",
       "vesselChange": true,
-      "seagulls": true
+      "seagulls": true,
+      "troubleScale": 1.0
     }
   ],
   "appearance": {
     "_memo": "同じ食材が出てくる回数の上限。食材ごとに ingredients.json の maxAppear で変えられます。書いていない食材は defaultMax 回。にがした食材がまた出てくるのも、この回数の中だけです。 pacing=true のとき、残りの回数が終わりまで持つように出すペースをならします。",
     "defaultMax": 2,
     "pacing": true
+  },
+  "entry": {
+    "_memo": "すくった食材が器に入るときの入り方。weights は出やすさ(数が大きいほど出やすい)。sutto=すっと入る、kurutto=くるっと回って入る、fuchi=縁に当たって下に落ちる、bonbon=ボンボン跳ねて外へ、makikomi=弾いて中の食材を1つ巻き込んで外へ。食材ごとに ingredients.json の entry で上書きできます。rescueSec はこぼれた食材をタップで取り返せる秒数。",
+    "rescueSec": 2,
+    "weights": {
+      "sutto": 45,
+      "kurutto": 25,
+      "fuchi": 10,
+      "bonbon": 12,
+      "makikomi": 8
+    }
   },
   "respawnDelaySec": 4,
   "stopSpawningBeforeEndSec": 4,

@@ -18,6 +18,8 @@ const Game = (() => {
     '</svg>';
 
   const PILE_DOM_MAX = 70;     // ザルに描く食材の最大数(多すぎると重くなるため)
+  // 器への入り方:すっと/くるっと/ふちに当たって落ちる/ボンボン跳ねて外へ/巻き込んで外へ
+  const ENTRY_MODES = ['sutto', 'kurutto', 'fuchi', 'bonbon', 'makikomi'];
 
   let S;                       // 設定(settings.json)
   let field, layer, fx, basket, pile, timerFill, catchMsg, startCount, finaleText, msgText;
@@ -37,8 +39,11 @@ const Game = (() => {
   let vesselId = 'zaru';       // いまの器
   let vesselDish = null;       // 器を決めたときの料理
   let pileBottom = 70;         // 器の底から食材を積み始める高さ
-  let caught = {};             // { id: 個数 }
-  let pileCount = 0;
+  let caught = {};             // { id: 個数 }(器の中+飛んでいる途中+こぼれて戻せる途中)
+  let basketItems = [];        // 器の中の食材 { ing, slotIndex, el }
+  let freeSlots = [];          // 空いた置き場所
+  let nextSlot = 0;
+  let loose = [];              // 器からこぼれて、タップで戻せる食材
   let onFinish = null;
   let catchTimer = null;
   let useBeatSound = true;
@@ -127,7 +132,10 @@ const Game = (() => {
     comeback = [];
     phaseIndex = -1;
     caught = {};
-    pileCount = 0;
+    basketItems = [];
+    freeSlots = [];
+    nextSlot = 0;
+    loose = [];
     layer.innerHTML = '';
     fx.innerHTML = '';
     pile.innerHTML = '';
@@ -177,6 +185,7 @@ const Game = (() => {
     }
 
     updateIngredients(dt);
+    updateLoose(dt);
 
     if (gameTime >= S.gameSeconds) {
       finish();
@@ -400,6 +409,14 @@ const Game = (() => {
     const y = e.clientY - fr.top;
     ripple(x, y);
 
+    // こぼれた食材が先(タップで器に戻す)。当たりの範囲は広め
+    let lb = null, lbD = Infinity;
+    loose.forEach(l => {
+      const d = Math.hypot(l.x - x, l.y - y);
+      if (d < 85 && d < lbD) { lb = l; lbD = d; }
+    });
+    if (lb) { rescueLoose(lb); return; }
+
     // 見た目より大きい範囲で当たりにする(半径 + 45px)
     let best = null, bestD = Infinity;
     active.forEach(a => {
@@ -420,7 +437,7 @@ const Game = (() => {
     setTimeout(() => r.remove(), 500);
   }
 
-  // ── 網ですくってザルへ ──────────────────────────────────
+  // ── 網ですくってザル(器)へ ────────────────────────────
   function scoop(a) {
     active = active.filter(x => x !== a);
     a.el.classList.add('caught');
@@ -443,23 +460,192 @@ const Game = (() => {
       { transform: at(0, -30, -40, 0.9), opacity: 0 },
     ], { duration: 520, easing: 'ease-out' }).onfinish = () => net.remove();
 
-    // 食材がザルへ飛んでいく
-    const target = pileTarget();
-    const half = a.size / 2;
-    const from = `translate3d(${a.x - half}px, ${a.y - half}px, 0)`;
-    const midX = (a.x + target.x) / 2;
-    const midY = Math.min(a.y, target.y) - 90;
-    const anim = a.el.animate([
-      { transform: from + ' scale(1)', offset: 0 },
-      { transform: `translate3d(${a.x - half}px, ${a.y - half - 30}px, 0) scale(1.1)`, offset: 0.25 },
-      { transform: `translate3d(${midX - half}px, ${midY - half}px, 0) scale(0.8) rotate(180deg)`, offset: 0.6 },
-      { transform: `translate3d(${target.x - half}px, ${target.y - half}px, 0) scale(0.45) rotate(360deg)`, offset: 1 },
-    ], { duration: 780, easing: 'ease-in-out', fill: 'forwards' });
-    anim.onfinish = () => {
+    // 入り方を決める(食材ごとの出やすさ)
+    let mode = pickEntry(a.ing);
+    if (mode === 'makikomi' && !basketItems.some(b => b.el)) mode = 'bonbon';
+
+    // 食材が器へ飛んでいく(ふちに当たるときは、ふちをめがけて)
+    const slotIndex = takeSlot();
+    const target = mode === 'fuchi' ? rimPoint(a.x) : slotPos(slotIndex);
+    flyTo(a.el, a.x, a.y, a.size, target, 780, () => {
       a.el.remove();
-      addToPile(a.ing, target);
+      entryLand(mode, a.ing, slotIndex, target);
+    });
+  }
+
+  /** 食材の丸を、放物線で target へ飛ばす */
+  function flyTo(el, x, y, size, target, ms, done) {
+    const half = size / 2;
+    const midX = (x + target.x) / 2;
+    const midY = Math.min(y, target.y) - 90;
+    const sc = 44 / size;   // 器の中では小さく
+    el.animate([
+      { transform: `translate3d(${x - half}px, ${y - half}px, 0) scale(1)`, offset: 0 },
+      { transform: `translate3d(${x - half}px, ${y - half - 30}px, 0) scale(1.1)`, offset: 0.25 },
+      { transform: `translate3d(${midX - half}px, ${midY - half}px, 0) scale(0.8) rotate(180deg)`, offset: 0.6 },
+      { transform: `translate3d(${target.x - half}px, ${target.y - half}px, 0) scale(${sc}) rotate(360deg)`, offset: 1 },
+    ], { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).onfinish = done;
+  }
+
+  let forcedEntry = null;   // 動作確認用
+  function pickEntry(ing) {
+    if (forcedEntry) return forcedEntry;
+    const E = S.entry;
+    const w = Object.assign({}, E.weights, ing.entry || {});
+    const trouble = phase().troubleScale == null ? 1 : phase().troubleScale;
+    ['fuchi', 'bonbon', 'makikomi'].forEach(k => { w[k] = (Number(w[k]) || 0) * trouble; });
+    const keys = ENTRY_MODES.filter(k => Number(w[k]) > 0);
+    const total = keys.reduce((n, k) => n + Number(w[k]), 0);
+    if (!total) return 'sutto';
+    let r = Math.random() * total;
+    for (const k of keys) { r -= Number(w[k]); if (r <= 0) return k; }
+    return 'sutto';
+  }
+
+  /** 器に着いたところで、入り方ごとの動き */
+  function entryLand(mode, ing, slotIndex, target) {
+    if (mode === 'sutto') {
+      addToBasket(ing, slotIndex);
+      Sound.playDrop();
+    } else if (mode === 'kurutto') {
+      // その場でくるっと宙返りしてから入る
+      const el = makeLooseEl(ing, false);
+      const tr = (dy, rot, s) => `translate3d(${target.x}px, ${target.y + dy}px, 0) rotate(${rot}deg) scale(${s})`;
+      Sound.play('spin');
+      el.animate([
+        { transform: tr(0, 0, 1) },
+        { transform: tr(-60, 200, 1.2), offset: 0.45 },
+        { transform: tr(-30, 330, 1.1), offset: 0.7 },
+        { transform: tr(0, 360, 1) },
+      ], { duration: 650, easing: 'ease-in-out' }).onfinish = () => {
+        el.remove();
+        addToBasket(ing, slotIndex);
+        Sound.playDrop();
+      };
+    } else if (mode === 'fuchi') {
+      // ふちに当たって、下へ落ちていく(落ちる途中でタップすれば拾える)
+      releaseSlot(slotIndex);
+      Sound.play('bonk');
+      const dir = target.x < field.clientWidth / 2 ? -1 : 1;
+      addLoose(ing, fallPath(target.x, target.y, dir));
+    } else if (mode === 'bonbon') {
+      // ボンボン跳ねて外へ(跳ねている間にタップすれば戻せる)
+      releaseSlot(slotIndex);
+      Sound.play('boing');
+      const dir = target.x < field.clientWidth / 2 ? -1 : 1;
+      addLoose(ing, bouncePath(target.x, target.y, dir));
+    } else if (mode === 'makikomi') {
+      // 弾いて、中の別の食材を1つ巻き込んで外へ(どちらもタップで戻せる)
+      releaseSlot(slotIndex);
+      Sound.play('boing');
+      const victims = basketItems.filter(b => b.el);
+      const v = victims[Math.floor(Math.random() * victims.length)];
+      const vp = elCenter(v.el);
+      removeFromBasket(v);
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      addLoose(ing, bouncePath(target.x, target.y, dir));
+      addLoose(v.ing, bouncePath(vp.x, vp.y, -dir));
+    }
+  }
+
+  // ── 器からこぼれた食材(タップで戻せる) ─────────────────
+  function makeLooseEl(ing, tappable) {
+    const el = document.createElement('div');
+    el.className = 'loose' + (tappable ? ' tappable' : '');
+    el.style.setProperty('--c', ing.color);
+    el.innerHTML = `<div class="loose-body">${ingredientIconHTML(ing)}</div>` +
+      (tappable ? '<div class="loose-hint">タップ!</div>' : '');
+    fx.appendChild(el);
+    return el;
+  }
+
+  function addLoose(ing, path) {
+    const el = makeLooseEl(ing, true);
+    const l = { ing, el, body: el.querySelector('.loose-body'), path, t: 0, dur: S.entry.rescueSec, x: 0, y: 0 };
+    loose.push(l);
+    placeLoose(l);
+    return l;
+  }
+
+  function placeLoose(l) {
+    const p = l.path(Math.min(1, l.t / l.dur), l.t);
+    l.x = p.x;
+    l.y = p.y;
+    l.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+    // 回すのは食材だけ(「タップ!」の札は回さない)
+    l.body.style.transform = `rotate(${p.rot || 0}deg)`;
+  }
+
+  function updateLoose(dt) {
+    loose = loose.filter(l => {
+      l.t += dt;
+      placeLoose(l);
+      if (l.t < l.dur) return true;
+      // 間に合わなかった:器からは出ていくが、回数の上限の中ならまた現れる
+      l.el.remove();
+      caught[l.ing.id] = Math.max(0, (caught[l.ing.id] || 0) - 1);
+      scheduleComeback(l.ing.id);
+      return false;
+    });
+  }
+
+  /** こぼれた食材をタップして戻す */
+  function rescueLoose(l, quiet) {
+    loose = loose.filter(x => x !== l);
+    const slotIndex = takeSlot();
+    const to = slotPos(slotIndex);
+    if (!quiet) {
+      Sound.play('rescue');
+      popWord(l.x, l.y - 40, 'セーフ!');
+    }
+    l.el.classList.remove('tappable');
+    const hint = l.el.querySelector('.loose-hint');
+    if (hint) hint.remove();
+    l.el.animate([
+      { transform: `translate3d(${l.x}px, ${l.y}px, 0) scale(1.2)` },
+      { transform: `translate3d(${(l.x + to.x) / 2}px, ${Math.min(l.y, to.y) - 80}px, 0) scale(1.1) rotate(180deg)`, offset: 0.5 },
+      { transform: `translate3d(${to.x}px, ${to.y}px, 0) scale(1) rotate(360deg)` },
+    ], { duration: quiet ? 300 : 600, easing: 'ease-in-out', fill: 'forwards' }).onfinish = () => {
+      l.el.remove();
+      addToBasket(l.ing, slotIndex);
       Sound.playDrop();
     };
+  }
+
+  // 落ちる道すじ:ちょっと跳ね上がってから、画面の下へ
+  function fallPath(x0, y0, dir) {
+    const dur = S.entry.rescueSec;
+    const yEnd = field.clientHeight + 40;
+    const v0 = -170;
+    const g = 2 * (yEnd - y0 - v0 * dur) / (dur * dur);
+    const xs = Math.min(field.clientWidth - 34, Math.max(34, x0));
+    return (p, t) => ({
+      x: Math.min(field.clientWidth - 30, Math.max(30, xs + dir * 46 * p)),
+      y: y0 + v0 * t + 0.5 * g * t * t,
+      rot: dir * 220 * p,
+    });
+  }
+
+  // 跳ねる道すじ:3回ボンボン跳ねながら、画面の横へ出ていく
+  function bouncePath(x0, y0, dir) {
+    const w = field.clientWidth;
+    const dist = dir > 0 ? w + 40 - x0 : x0 + 40;
+    const hops = 3;
+    return p => ({
+      x: x0 + dir * dist * p,
+      y: y0 - Math.abs(Math.sin(p * hops * Math.PI)) * 110 * (1 - p * 0.4),
+      rot: dir * 360 * p,
+    });
+  }
+
+  function popWord(x, y, text) {
+    const w = document.createElement('div');
+    w.className = 'pop-word';
+    w.textContent = text;
+    w.style.left = x + 'px';
+    w.style.top = y + 'px';
+    fx.appendChild(w);
+    setTimeout(() => w.remove(), 1000);
   }
 
   function showCatch(ing, isNew) {
@@ -470,8 +656,11 @@ const Game = (() => {
     catchTimer = setTimeout(() => catchMsg.classList.remove('show'), 1400);
   }
 
-  // ザルの中の山:下の段から順に積んでいく(7個,6個,5個…)
+  // ── 器の中 ──────────────────────────────────────────────
+  // 置き場所:下の段から順に積んでいく(7個,6個,5個…)。空いた場所は使い回す
+  const slotCache = [];
   function pileSlot(k) {
+    if (slotCache[k]) return slotCache[k];
     const per = 28;
     const layerN = Math.floor(k / per);
     let n = k % per, row = 0, cap = 7;
@@ -479,30 +668,65 @@ const Game = (() => {
     const spacing = 32;
     const sx = (n - (cap - 1) / 2) * spacing + (Math.random() * 10 - 5) + (layerN % 2 ? 14 : 0);
     const sy = row * 22 + layerN * 8 + Math.random() * 4;
-    return { sx, sy };
+    return (slotCache[k] = { sx, sy });
   }
 
-  function pileTarget() {
+  function takeSlot() {
+    if (freeSlots.length) {
+      freeSlots.sort((a, b) => a - b);
+      return freeSlots.shift();
+    }
+    return nextSlot++;
+  }
+  function releaseSlot(k) { if (!freeSlots.includes(k)) freeSlots.push(k); }
+
+  /** 置き場所の、画面の中での位置 */
+  function slotPos(k) {
     const fr = field.getBoundingClientRect();
     const br = basket.getBoundingClientRect();
-    const slot = pileSlot(pileCount);
-    pileCount++;
+    const slot = pileSlot(k);
     return {
-      slot,
       x: br.left - fr.left + br.width / 2 + slot.sx,
       y: br.bottom - fr.top - pileBottom - slot.sy - 22,
     };
   }
 
-  function addToPile(ing, target) {
-    if (pile.children.length >= PILE_DOM_MAX) return;
-    const item = document.createElement('div');
-    item.className = 'pile-item';
-    item.style.left = `calc(50% + ${target.slot.sx}px)`;
-    item.style.bottom = target.slot.sy + 'px';
-    item.style.zIndex = String(pileCount);
-    item.innerHTML = ingredientIconHTML(ing);
-    pile.appendChild(item);
+  /** 器のふち(左か右の、近いほう) */
+  function rimPoint(fromX) {
+    const fr = field.getBoundingClientRect();
+    const br = basket.getBoundingClientRect();
+    const cx = br.left - fr.left + br.width / 2;
+    const dir = fromX < cx ? -1 : 1;
+    return { x: cx + dir * br.width * 0.46, y: br.bottom - fr.top - 86 };
+  }
+
+  function elCenter(el) {
+    const fr = field.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - fr.left + r.width / 2, y: r.top - fr.top + r.height / 2 };
+  }
+
+  function addToBasket(ing, slotIndex) {
+    const item = { ing, slotIndex, el: null };
+    if (pile.querySelectorAll('.pile-item').length < PILE_DOM_MAX) {
+      const slot = pileSlot(slotIndex);
+      const el = document.createElement('div');
+      el.className = 'pile-item';
+      el.style.left = `calc(50% + ${slot.sx}px)`;
+      el.style.bottom = slot.sy + 'px';
+      el.style.zIndex = String(slotIndex + 1);
+      el.innerHTML = ingredientIconHTML(ing);
+      pile.appendChild(el);
+      item.el = el;
+    }
+    basketItems.push(item);
+    return item;
+  }
+
+  function removeFromBasket(item) {
+    basketItems = basketItems.filter(b => b !== item);
+    if (item.el) item.el.remove();
+    releaseSlot(item.slotIndex);
   }
 
   // ── 終了:煙がもくもく →「ボン!」→ チン! ─────────────────
@@ -519,6 +743,8 @@ const Game = (() => {
         .onfinish = () => a.el.remove();
     });
     active = [];
+    // こぼれている途中の食材は、やさしく器に戻す
+    loose.slice().forEach(l => rescueLoose(l, true));
 
     showBig(finaleText, 'そこまで!', 0);
 
@@ -614,7 +840,13 @@ const Game = (() => {
   /** 動作確認用:時間を sec 秒すすめる(開発者ツールで Game.debugSkip(30) など) */
   function debugSkip(sec) { gameTime += sec; }
   /** 動作確認用:いまの状態 */
-  function debugState() { return { gameTime, phase: phase() && phase().id, appeared, active: active.length }; }
+  function debugState() {
+    return { gameTime, phase: phase() && phase().id, appeared, active: active.length,
+      basket: basketItems.length, loose: loose.length, caught: Object.assign({}, caught) };
+  }
 
-  return { init, start, stop, pelicanSay, debugSkip, debugState };
+  /** 動作確認用:入り方を固定する(Game.debugForceEntry('bonbon') など。null で元に戻す) */
+  function debugForceEntry(mode) { forcedEntry = mode; }
+
+  return { init, start, stop, pelicanSay, debugSkip, debugState, debugForceEntry };
 })();
