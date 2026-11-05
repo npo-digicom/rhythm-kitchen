@@ -3,6 +3,8 @@
 /**
  * ペトロスのおはなし。
  *   ・港のこばなし(完成画面で1つ)
+ *   ・スタンプ(料理1回で1つ)と、本編のおはなし(スタンプ3つごとに1話)
+ *   ・おはなしを読む画面(大きな文字)
  * 文章はすべて data/story.json にあります。
  * 記録はブラウザ(localStorage)に保存します。保存できない環境でも遊べます。
  */
@@ -48,5 +50,85 @@ const Story = (() => {
     return list[i];
   }
 
-  return { init, fill, nextKobanashi };
+  // ── スタンプと本編 ──────────────────────────────────────
+  const perChapter = () => Math.max(1, Data.get().settings.story.stampsPerChapter | 0);
+  const stamps = () => rec.stamps;
+
+  /** いま読める本編の話数 */
+  function chaptersOpen() {
+    return Math.min(st().chapters.length, Math.floor(rec.stamps / perChapter()));
+  }
+
+  /** スタンプを1つ足す。新しく開いた話の番号(0から)の一覧を返す */
+  function addStamp() {
+    const before = chaptersOpen();
+    rec.stamps++;
+    save();
+    const after = chaptersOpen();
+    const opened = [];
+    for (let i = before; i < after; i++) opened.push(i);
+    return opened;
+  }
+
+  /** 次の話まで、あといくつ(全部開いていれば 0) */
+  function stampsUntilNext() {
+    if (chaptersOpen() >= st().chapters.length) return 0;
+    return perChapter() - (rec.stamps % perChapter());
+  }
+
+  /** スタンプの絵(順番に変わる) */
+  const STAMP_EMOJI = ['🐟', '🍅', '🫒', '🍋', '🥖', '🐙', '🧀', '🍆'];
+  const stampEmoji = i => STAMP_EMOJI[((i % STAMP_EMOJI.length) + STAMP_EMOJI.length) % STAMP_EMOJI.length];
+
+  const isRead = k => !!rec.read[k];
+  function markRead(k) {
+    if (!k || rec.read[k]) return;
+    rec.read[k] = true;
+    save();
+  }
+
+  function chapterItem(i) {
+    const c = st().chapters[i];
+    return {
+      readKey: 'c' + i,
+      label: fill(st().labels.chapterLabel, { n: i + 1 }),
+      title: c.title,
+      text: c.text,
+    };
+  }
+
+  // ── 読む画面 ────────────────────────────────────────────
+  let onReaderClose = null;
+
+  /** おはなしを大きな文字で表示する。item = { label, title, text, art, color, readKey } */
+  function openReader(item, closed) {
+    const m = document.getElementById('reader');
+    const card = m.querySelector('.modal-card');
+    if (item.color) card.style.setProperty('--c', item.color); else card.style.removeProperty('--c');
+    document.getElementById('reader-label').textContent = item.label || '';
+    const art = document.getElementById('reader-art');
+    art.innerHTML = item.art || '';
+    art.hidden = !item.art;
+    document.getElementById('reader-title').textContent = item.title || '';
+    document.getElementById('reader-text').textContent = item.text || '';
+    document.getElementById('btn-reader-close').textContent = st().labels.close;
+    m.hidden = false;
+    card.scrollTop = 0;
+    markRead(item.readKey);
+    onReaderClose = closed || null;
+    document.getElementById('btn-reader-close').focus();
+  }
+
+  function closeReader() {
+    document.getElementById('reader').hidden = true;
+    const f = onReaderClose;
+    onReaderClose = null;
+    if (f) f();
+  }
+
+  return {
+    init, fill, nextKobanashi,
+    stamps, stampEmoji, perChapter, chaptersOpen, addStamp, stampsUntilNext, isRead, chapterItem,
+    openReader, closeReader,
+  };
 })();

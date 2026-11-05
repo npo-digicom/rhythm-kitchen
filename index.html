@@ -97,6 +97,15 @@
         <p id="portion-badge" class="portion-badge"></p>
         <p id="portion-message" class="portion-message"></p>
 
+        <!-- 新しいおはなしの知らせ(タップで読む) -->
+        <div id="story-notices" class="story-notices"></div>
+
+        <div id="stamp-card" class="card stamp-card">
+          <h3 id="stamp-card-title" class="card-title">たまったスタンプ</h3>
+          <div id="stamp-row" class="stamp-row"></div>
+          <p id="stamp-card-text" class="stamp-card-text"></p>
+        </div>
+
         <div class="card caught-card">
           <h3 class="card-title">つかまえた食材</h3>
           <ul id="caught-list" class="caught-list"></ul>
@@ -145,6 +154,17 @@
       </div>
     </div>
   </section>
+
+  <!-- おはなしを読む画面(どの画面からでも開く) -->
+  <div id="reader" class="modal reader" hidden role="dialog" aria-modal="true" aria-labelledby="reader-title">
+    <div class="modal-card reader-card">
+      <p id="reader-label" class="reader-label"></p>
+      <div id="reader-art" class="reader-art"></div>
+      <h3 id="reader-title" class="reader-title"></h3>
+      <p id="reader-text" class="reader-text"></p>
+      <button id="btn-reader-close" class="btn btn-primary" type="button">とじる</button>
+    </div>
+  </div>
 
 </div>
 

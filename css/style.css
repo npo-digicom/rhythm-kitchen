@@ -893,6 +893,115 @@ html, body {
   to   { opacity: 1; transform: none; }
 }
 
+/* ── おはなしの知らせ・スタンプ ─────────────────────────── */
+.story-notices { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.story-notices[hidden] { display: none; }
+.notice-btn {
+  --c: #C94A0C;
+  width: 100%;
+  min-height: 96px;
+  border: 5px solid var(--c);
+  border-radius: 24px;
+  background: #FFF7D6;
+  font: inherit;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 rgba(120, 50, 0, 0.35);
+  animation: notice-in 0.6s cubic-bezier(.2, 1.5, .5, 1) both, notice-glow 1.6s ease-in-out 0.6s infinite alternate;
+}
+.notice-btn:active { transform: scale(0.97); }
+.notice-btn:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px; }
+.notice-btn.guest { background: #FFFBEA; }
+.notice-head { font-size: 1.05rem; font-weight: 900; color: var(--c); line-height: 1.4; }
+.notice-title { font-size: 1.3rem; font-weight: 900; line-height: 1.4; }
+.notice-tap {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--c);
+  border-radius: 999px;
+  padding: 0 16px;
+  margin-top: 4px;
+}
+.notice-btn.read { animation: none; box-shadow: 0 4px 0 rgba(120, 50, 0, 0.2); }
+.notice-btn.read .notice-tap::before { content: '✓ '; }
+@keyframes notice-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes notice-glow {
+  from { box-shadow: 0 6px 0 rgba(120, 50, 0, 0.35), 0 0 0 0 rgba(255, 200, 40, 0); }
+  to   { box-shadow: 0 6px 0 rgba(120, 50, 0, 0.35), 0 0 22px 6px rgba(255, 200, 40, 0.75); }
+}
+
+.stamp-card { border-color: #C94A0C; text-align: center; }
+.stamp-row { display: flex; justify-content: center; gap: 14px; margin: 4px 0 8px; }
+.stamp {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 4px dashed #C9B9A0;
+  background: #FBF6EE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.1rem;
+  line-height: 1;
+}
+.stamp.on {
+  border: 4px solid #C62828;
+  background: #FFF0EE;
+  box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 5px rgba(198, 40, 40, 0.5);
+  transform: rotate(-8deg);
+}
+.stamp.fresh { animation: stamp-press 0.7s cubic-bezier(.3, 1.6, .5, 1) 0.4s both; }
+@keyframes stamp-press {
+  0%   { transform: scale(2.2) rotate(-20deg); opacity: 0; }
+  60%  { transform: scale(0.9) rotate(-6deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-8deg); }
+}
+.stamp-card-text { font-size: 1.1rem; font-weight: 800; color: var(--ink-soft); }
+
+/* ── おはなしを読む画面(大きな文字・ゆったりした行間) ───── */
+.reader { z-index: 120; padding: 12px; }
+.reader-card {
+  --c: #2E7DA6;
+  max-height: 100%;
+  overflow-y: auto;
+  gap: 8px;
+  padding: 18px 18px 16px;
+  background: #FFFDF6;
+}
+.reader-label {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #fff;
+  background: var(--c);
+  border-radius: 999px;
+  padding: 0 16px;
+}
+.reader-art { width: 96px; height: 96px; flex-shrink: 0; }
+.reader-art[hidden] { display: none; }
+.reader-title { font-size: 1.6rem; font-weight: 900; line-height: 1.35; text-align: center; color: var(--ink); }
+.reader-text {
+  font-size: 1.3rem;
+  line-height: 1.95;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  width: 100%;
+  margin-bottom: 6px;
+}
+@media (max-height: 700px) {
+  .reader-text { font-size: 1.15rem; line-height: 1.85; }
+  .reader-art { width: 72px; height: 72px; }
+  .reader-title { font-size: 1.4rem; }
+}
+
 /* ── ④ 図鑑 ───────────────────────────────────────────────── */
 #screen-zukan { background: rgba(255, 244, 226, 0.94); }
 .zukan-header {

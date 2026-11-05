@@ -55,6 +55,10 @@ const App = (() => {
       if (e.target.id === 'zukan-detail') Zukan.closeDetail();
     });
     onPress('btn-koba', () => renderKobanashi(true));
+    onPress('btn-reader-close', () => Story.closeReader());
+    $('reader').addEventListener('click', e => {
+      if (e.target.id === 'reader') Story.closeReader();
+    });
   }
 
   async function startGame() {
@@ -129,6 +133,11 @@ const App = (() => {
     $('koba-heading').textContent = L.kobanashiHeading;
     $('btn-koba').textContent = L.kobanashiButton;
     renderKobanashi(false);
+
+    // スタンプを1つ。3つたまるごとに本編が1話開く
+    const opened = Story.addStamp();
+    renderNotices(opened.map(i => Story.chapterItem(i)));
+    renderStampCard(opened.length > 0);
 
     show('complete');
     celebrate(order, dish);
@@ -261,6 +270,51 @@ const App = (() => {
       }
     });
     return v;
+  }
+
+  // ── おはなしの知らせ ───────────────────────────────────
+  /** 完成画面に「新しいおはなしが届きました」などを出す。items は Story.chapterItem などの形 */
+  function renderNotices(items) {
+    const box = $('story-notices');
+    const L = Data.get().story.labels;
+    box.innerHTML = '';
+    items.forEach(item => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'notice-btn' + (item.guest ? ' guest' : '');
+      if (item.color) btn.style.setProperty('--c', item.color);
+      btn.innerHTML =
+        `<span class="notice-head">${escapeHTML(item.guest ? L.newGuest : L.newChapter)}</span>` +
+        `<span class="notice-title">${escapeHTML((item.label || '') + '「' + item.title + '」')}</span>` +
+        `<span class="notice-tap">${escapeHTML(L.tapToRead)}</span>`;
+      btn.addEventListener('click', () => {
+        Sound.unlock();
+        Story.openReader(item, () => btn.classList.add('read'));
+      });
+      box.appendChild(btn);
+    });
+    box.hidden = items.length === 0;
+  }
+
+  /** 完成画面のスタンプ(いまの3つ分) */
+  function renderStampCard(justOpened) {
+    const L = Data.get().story.labels;
+    const per = Story.perChapter();
+    const n = Story.stamps();
+    let filled = n % per;
+    if (filled === 0 && n > 0) filled = per;
+    $('stamp-card-title').textContent = L.stampsHeading;
+    const row = $('stamp-row');
+    row.innerHTML = '';
+    for (let i = 0; i < per; i++) {
+      const s = document.createElement('span');
+      s.className = 'stamp' + (i < filled ? ' on' : '') + (i === filled - 1 ? ' fresh' : '');
+      s.textContent = i < filled ? Story.stampEmoji(n - filled + i) : '';
+      row.appendChild(s);
+    }
+    const left = Story.stampsUntilNext();
+    $('stamp-card-text').textContent = left ? Story.fill(L.stampsUntilNext, { n: left }) : L.allChaptersOpen;
+    $('stamp-card').classList.toggle('just-opened', !!justOpened);
   }
 
   /** 港のこばなし(直前と同じものは出さない) */
