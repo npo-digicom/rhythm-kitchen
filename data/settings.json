@@ -1,0 +1,19 @@
+{
+  "_memo": "ゲーム全体の設定です。数字を変えると遊び心地が変わります。",
+  "gameSeconds": 90,
+  "bpm": 80,
+  "beatSound": true,
+  "bgm": {
+    "_memo": "曲を使うときは file に 'audio/piccadilly.mp3' のように書きます。空なら曲なし(拍の音だけ)。",
+    "file": "",
+    "volume": 0.8,
+    "beatSoundWithBgm": false
+  },
+  "speedScale": 1.0,
+  "maxOnScreenStart": 2,
+  "maxOnScreenEnd": 4,
+  "spawnEveryBeats": 2,
+  "respawnDelaySec": 4,
+  "stopSpawningBeforeEndSec": 4,
+  "zukanStorageKey": "rhythmKitchen.zukan.v1"
+}
