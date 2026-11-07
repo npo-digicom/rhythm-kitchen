@@ -9,6 +9,7 @@ const App = (() => {
   let beforeZukan = 'start';
   let bgmTried = false;
   let effectsTried = false;
+  let soundKey = 'rhythmKitchen.sound.v1';
   let celebrateTimers = [];
   let lastResult = null;
 
@@ -33,14 +34,21 @@ const App = (() => {
       box.hidden = false;
       box.textContent =
         'データを読み込めませんでした。(' + err.message + ')' +
-        ' index.html を直接開いている場合は、report_redesign.md の「試し方」を見てください。';
+        ' index.html を直接開いている場合は、report_final.md の「パソコンで試す方法」を見てください。';
       $('btn-start').textContent = '読み込みエラー';
       return;
     }
 
-    Zukan.init(Data.get().settings.zukanStorageKey);
-    Story.init(Data.get().settings.story.storageKey);
+    const S = Data.get().settings;
+    Zukan.init(S.zukanStorageKey);
+    Story.init(S.storyStorageKey);
     Game.init();
+    initSoundButton(S.soundStorageKey);
+    renderHome();
+    // ゲームで使う絵を、先に読み込んでおく
+    preloadImages(Data.get().gameIngredients.map(i => i.image)
+      .concat(...Data.get().gameIngredients.map(i => i.variants.map(v => v.image)))
+      .concat(Art.allBirdImages()));
 
     $('btn-start').disabled = false;
     $('btn-start').textContent = 'はじめる';
@@ -52,16 +60,52 @@ const App = (() => {
     onPress('btn-zukan-back', () => { Zukan.closeDetail(); show(beforeZukan); });
     onPress('btn-book-from-start', openBook);
     onPress('btn-book-from-complete', openBook);
-    onPress('btn-book-back', () => { Story.closeReader(); show(beforeZukan); });
+    onPress('btn-book-back', () => { Story.closeReader(); if (beforeZukan === 'start') renderHome(); show(beforeZukan); });
     onPress('btn-zukan-close', () => Zukan.closeDetail());
     $('zukan-detail').addEventListener('click', e => {
       if (e.target.id === 'zukan-detail') Zukan.closeDetail();
     });
-    onPress('btn-koba', () => renderKobanashi(true));
     onPress('btn-reader-close', () => Story.closeReader());
     $('reader').addEventListener('click', e => {
       if (e.target.id === 'reader') Story.closeReader();
     });
+  }
+
+  // ── 音のオン・オフのボタン(画面の右上。どの画面でも) ──
+  function initSoundButton(k) {
+    if (k) soundKey = k;
+    let off = false;
+    try { off = localStorage.getItem(soundKey) === 'off'; } catch (e) { /* 無視 */ }
+    Sound.setMuted(off);
+    drawSoundButton();
+    $('btn-sound').addEventListener('click', () => {
+      Sound.unlock();
+      Sound.setMuted(!Sound.isMuted());
+      try { localStorage.setItem(soundKey, Sound.isMuted() ? 'off' : 'on'); } catch (e) { /* 無視 */ }
+      drawSoundButton();
+    });
+  }
+  function drawSoundButton() {
+    const off = Sound.isMuted();
+    const b = $('btn-sound');
+    b.classList.toggle('off', off);
+    b.setAttribute('aria-pressed', off ? 'true' : 'false');
+    b.setAttribute('aria-label', off ? '音を出す' : '音を消す');
+    $('sound-icon').textContent = off ? '🔇' : '🔊';
+    $('sound-label').textContent = off ? '音なし' : '音あり';
+  }
+
+  // ── トップページ ────────────────────────────────────────
+  function renderHome() {
+    const st = Data.get().story;
+    $('home-petros').innerHTML = Art.pelican('home');
+    $('home-amones').innerHTML = Art.seagull('fly');
+    $('home-story-title').textContent = st.labels.storyBoxTitle;
+    const h = Story.homeStory();
+    $('home-story-label').textContent = h.label;
+    $('home-story-label').hidden = !h.label;
+    $('home-story-text').textContent = h.text;
+    $('home-credit').textContent = Data.get().settings.bgm.credit || '';
   }
 
   async function startGame() {
@@ -82,6 +126,8 @@ const App = (() => {
     }
     bgmTried = true;
     effectsTried = true;
+    // 曲は「はじめる」を押したときに始める(iPhone の Safari でも鳴るように)
+    if (Sound.hasBGM()) Sound.startBGM(S.bgm);
     clearCelebration();
     show('game');
     // 画面の大きさが決まってから始める
@@ -127,7 +173,8 @@ const App = (() => {
       caughtIngs.forEach(ing => {
         const li = document.createElement('li');
         li.style.setProperty('--c', ing.color);
-        li.innerHTML = `<span class="ci-emoji" aria-hidden="true">${ing.emoji}</span>${ing.name}`;
+        li.innerHTML = `<span class="ci-icon" aria-hidden="true">${ingredientIconHTML(ing)}</span>${escapeHTML(ing.name)}` +
+          (caught[ing.id] > 1 ? `<span class="ci-count">×${caught[ing.id]}</span>` : '');
         list.appendChild(li);
       });
     }
@@ -138,17 +185,9 @@ const App = (() => {
     fillList($('recipe-materials'), r.materials || []);
     fillList($('recipe-steps'), r.steps || []);
 
-    const L = Data.get().story.labels;
-    $('koba-heading').textContent = L.kobanashiHeading;
-    $('btn-koba').textContent = L.kobanashiButton;
-    renderKobanashi(false);
-
-    // スタンプを1つ。3つたまるごとに本編が1話開く
-    const opened = Story.addStamp();
-    // ゲーム中に会えた特別なお客さまのおはなしも、ここで読める
-    const guestItems = (result.guests || []).map(g => Story.guestItem(g));
-    renderNotices(opened.map(i => Story.chapterItem(i)).concat(guestItems));
-    renderStampCard(opened.length > 0);
+    // ゲームを1回終えるごとに、物語が1話ひらく(10話のあとは「つづきは、またこんど」)
+    const news = Story.onGameFinished();
+    renderNotices(news.items, news.finished);
 
     show('complete');
     celebrate(order, dish);
@@ -162,7 +201,8 @@ const App = (() => {
     box.hidden = false;
     const match = order.id === dish.id;
     box.classList.toggle('match', match);
-    $('order-result-pelican').innerHTML = Art.pelican();
+    // 注文どおりなら翼を広げて、ちがっても満足そうに
+    $('order-result-pelican').innerHTML = Art.pelican(match ? 'celebrate' : 'happy');
     $('order-result-text').textContent = match ? P.match : P.other;
 
     clearCelebration();
@@ -284,19 +324,19 @@ const App = (() => {
   }
 
   // ── おはなしの知らせ ───────────────────────────────────
-  /** 完成画面に「新しいおはなしが届きました」などを出す。items は Story.chapterItem などの形 */
-  function renderNotices(items) {
+  /** 完成画面に「新しいおはなしが届きました」を出す。全部開いたあとは「つづきは、またこんど」 */
+  function renderNotices(items, finished) {
     const box = $('story-notices');
     const L = Data.get().story.labels;
     box.innerHTML = '';
     items.forEach(item => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'notice-btn' + (item.guest ? ' is-guest' : '');
-      if (item.color) btn.style.setProperty('--c', item.color);
+      btn.className = 'notice-btn';
+      const head = item.kind === 'epilogue' ? L.newEpilogue : L.newChapter;
       btn.innerHTML =
-        `<span class="notice-head">${escapeHTML(item.guest ? L.newGuest : L.newChapter)}</span>` +
-        `<span class="notice-title">${escapeHTML((item.label || '') + '「' + item.title + '」')}</span>` +
+        `<span class="notice-head">${escapeHTML(head)}</span>` +
+        `<span class="notice-title">${escapeHTML(item.label)}</span>` +
         `<span class="notice-tap">${escapeHTML(L.tapToRead)}</span>`;
       btn.addEventListener('click', () => {
         Sound.unlock();
@@ -304,39 +344,13 @@ const App = (() => {
       });
       box.appendChild(btn);
     });
-    box.hidden = items.length === 0;
-  }
-
-  /** 完成画面のスタンプ(いまの3つ分) */
-  function renderStampCard(justOpened) {
-    const L = Data.get().story.labels;
-    const per = Story.perChapter();
-    const n = Story.stamps();
-    let filled = n % per;
-    if (filled === 0 && n > 0) filled = per;
-    $('stamp-card-title').textContent = L.stampsHeading;
-    const row = $('stamp-row');
-    row.innerHTML = '';
-    for (let i = 0; i < per; i++) {
-      const s = document.createElement('span');
-      s.className = 'stamp' + (i < filled ? ' on' : '') + (i === filled - 1 ? ' fresh' : '');
-      s.textContent = i < filled ? Story.stampEmoji(n - filled + i) : '';
-      row.appendChild(s);
+    if (finished) {
+      const p = document.createElement('p');
+      p.className = 'notice-later';
+      p.textContent = L.allOpened;
+      box.appendChild(p);
     }
-    const left = Story.stampsUntilNext();
-    $('stamp-card-text').textContent = left ? Story.fill(L.stampsUntilNext, { n: left }) : L.allChaptersOpen;
-    $('stamp-card').classList.toggle('just-opened', !!justOpened);
-  }
-
-  /** 港のこばなし(直前と同じものは出さない) */
-  function renderKobanashi(animate) {
-    $('koba-text').textContent = Story.nextKobanashi();
-    if (animate) {
-      const t = $('koba-text');
-      t.classList.remove('refresh');
-      void t.offsetWidth;
-      t.classList.add('refresh');
-    }
+    box.hidden = items.length === 0 && !finished;
   }
 
   // showResult は動作確認用(つかまえた食材を渡すと完成画面を出せます)

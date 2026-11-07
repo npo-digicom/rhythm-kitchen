@@ -17,6 +17,7 @@ const Data = (() => {
     settings: null,
     motions: {},
     ingredients: [],
+    gameIngredients: [],
     byId: {},
     dishes: [],
     portions: [],
@@ -50,6 +51,8 @@ const Data = (() => {
       appearance: {}, entry: {}, seagull: {},
       respawnDelaySec: 4, stopSpawningBeforeEndSec: 4,
       zukanStorageKey: 'rhythmKitchen.zukan.v1',
+      storyStorageKey: 'rhythmKitchen.petrosStory.v1',
+      soundStorageKey: 'rhythmKitchen.sound.v1',
       pelican: {}, images: {}, sounds: {},
     }, raw.settings);
     store.settings.appearance = Object.assign({ defaultMax: 2 }, store.settings.appearance);
@@ -58,24 +61,30 @@ const Data = (() => {
       { sutto: 45, kurutto: 25, fuchi: 10, bonbon: 12, makikomi: 8 }, store.settings.entry.weights);
     store.settings.phases = store.settings.phases.slice().sort((a, b) => a.startSec - b.startSec)
       .map(ph => Object.assign({ maxOnScreen: 3, spawnEveryBeats: 2, speed: 1, message: '' }, ph));
-    store.settings.story = Object.assign({
-      storageKey: 'rhythmKitchen.story.v1', stampsPerChapter: 3, guestChance: 0.15, maxGuestsPerGame: 1,
-      guestAppearSec: [15, 65], guestStaySec: 11, unmetFavor: 6, guestTapRadius: 95,
-    }, store.settings.story);
+    store.settings.entry.offOrderWeights = Object.assign(
+      { sutto: 40, kurutto: 10, fuchi: 0, bonbon: 50, makikomi: 0 }, store.settings.entry.offOrderWeights);
+    store.settings.bgm = Object.assign({ file: '', loopStart: 0, loopEnd: 0, fadeSec: 0.6, volume: 0.7, credit: '' },
+      store.settings.bgm);
+    store.settings.images = Object.assign({ petros: {}, amones: {} }, store.settings.images);
     store.settings.seagull = Object.assign({
       firstDelaySec: 4, intervalSec: [8, 12], approachSec: 1.8, escapeSec: 3, tapRadius: 90,
     }, store.settings.seagull);
     store.settings.pelican = Object.assign({
       ask: '今日は{dish}が食べたいな', match: '注文どおり!ありがとう!', other: 'これもおいしそう!',
-      thanks: 'ありがとう!', rescue: 'とりかえしたよ!',
-      orderFavor: 1.6,
+      thanks: 'ありがとう!', rescue: 'とりかえしたよ!', cardComplete: 'そろいました!',
+      orderFavor: 3,
     }, store.settings.pelican);
 
     store.motions = raw.ingredients.motions || {};
-    store.ingredients = (raw.ingredients.ingredients || []).map(ing => Object.assign({
-      emoji: '❓', color: '#777777', motion: 'fuwafuwa', description: '',
-      image: 'images/ingredient_' + ing.id + '.png',
-    }, ing));
+    store.ingredients = (raw.ingredients.ingredients || []).map(ing => {
+      const x = Object.assign({ emoji: '❓', color: '#777777', motion: 'fuwafuwa', description: '', image: '', inGame: true }, ing);
+      x.variants = Array.isArray(x.variants) ? x.variants.filter(v => v && v.image) : [];
+      if (!x.image && x.variants.length) x.image = x.variants[0].image;
+      // 画像のない食材はゲームに出さない(図鑑では「?」のまま)
+      if (!x.image) x.inGame = false;
+      return x;
+    });
+    store.gameIngredients = store.ingredients.filter(x => x.inGame);
     store.byId = {};
     store.ingredients.forEach(ing => {
       if (!store.motions[ing.motion]) {
@@ -99,25 +108,24 @@ const Data = (() => {
   function normalizeStory(st) {
     st = st || {};
     const arr = v => (Array.isArray(v) ? v : []);
+    const imgs = v => arr(v).filter(x => typeof x === 'string' && x);
+    const ep = st.epilogue || {};
     return {
       labels: Object.assign({
-        kobanashiHeading: '⚓ 港のこばなし', kobanashiButton: 'もうひとつ、おはなし',
-        newChapter: '📮 新しいおはなしが届きました', newGuest: '✨ 特別なお客さまのおはなし',
-        tapToRead: 'タップして読む', stampBook: 'スタンプ帳', stampsHeading: 'たまったスタンプ',
-        stampsUntilNext: 'あと{n}つで、次のおはなし', allChaptersOpen: 'おはなしは全部ひらきました',
-        charactersHeading: '登場する鳥たち', chaptersHeading: '本編のおはなし', guestsHeading: '特別なお客さま',
-        guestThanks: '{name}が来てくれた!', guestStamp: '特別なスタンプをもらったよ', guestHint: 'タップしてみて',
-        chapterLabel: '第{n}話', guestLabel: '特別なお客さま', close: 'とじる',
-        stampsTotal: 'ぜんぶで {n}こ', specialStamps: '特別なスタンプ {n}こ', lockedChapter: 'まだ届いていません',
-        lockedCharacter: 'おはなしが進むと、わかります', unknownGuest: 'まだ', newBadge: 'NEW',
+        bookTitle: 'ペトロス君の物語', storyBoxTitle: 'おはなし',
+        charactersHeading: '登場するみんな', chaptersHeading: '本編', chapterLabel: '第{n}話',
+        lockedCharacter: 'タップすると、わかります', lockedChapter: 'まだ届いていません',
+        lockedEpilogue: '第10話のあとに届きます',
+        newChapter: '📮 新しいおはなしが届きました', newEpilogue: '📮 おしまいのページが届きました',
+        tapToRead: 'タップして読む', allOpened: 'つづきは、またこんど',
+        progress: '読めるおはなし:{n} / {total}', newBadge: 'NEW', close: 'とじる',
       }, st.labels),
-      characters: arr(st.characters).filter(c => c && c.name),
-      chapters: arr(st.chapters).filter(c => c && (c.title || c.text))
-        .map(c => ({ title: c.title || '', text: c.text || '' })),
-      guests: arr(st.guests).filter(g => g && g.id && g.name).map(g => Object.assign({
-        emoji: '✨', color: '#C9A100', weight: 1, text: '', image: 'images/guest_' + g.id + '.png',
-      }, g)),
-      kobanashi: arr(st.kobanashi).filter(t => typeof t === 'string' && t.trim()),
+      intro: st.intro || '',
+      characters: arr(st.characters).filter(c => c && c.name)
+        .map((c, i) => Object.assign({ id: 'c' + i, text: '', image: '' }, c)),
+      chapters: arr(st.chapters).filter(c => c && c.text)
+        .map(c => ({ title: c.title || '', text: c.text, images: imgs(c.images) })),
+      epilogue: ep.text ? { title: ep.title || 'おしまいに', heading: ep.heading || '', text: ep.text, images: imgs(ep.images) } : null,
       disclaimer: st.disclaimer || '',
     };
   }
@@ -128,12 +136,27 @@ const Data = (() => {
 /** 見つからなかった画像(何度も読みに行かないように覚えておく) */
 const missingImages = new Set();
 
-/** 食材の絵:PNG があればそれを、なければ絵文字を表示する */
-function ingredientIconHTML(ing) {
-  const img = ing.image && !missingImages.has(ing.image)
-    ? `<img src="${ing.image}" alt="" draggable="false" onerror="missingImages.add(this.getAttribute('src'));this.remove()">`
-    : '';
-  return `<span class="emoji" aria-hidden="true">${ing.emoji}</span>${img}`;
+/** 食材の絵:画像があればそれを、読めなければ絵文字を表示する */
+function ingredientIconHTML(ing, src) {
+  src = src || ing.image;
+  const emoji = `<span class="emoji" aria-hidden="true">${ing.emoji}</span>`;
+  if (!src || missingImages.has(src)) return emoji;
+  return `<img class="ing-img" src="${src}" alt="" draggable="false" data-emoji="${escapeHTML(ing.emoji)}" onerror="iconFallback(this)">`;
+}
+
+/** 画像が読めなかったとき、絵文字に置きかえる */
+function iconFallback(img) {
+  missingImages.add(img.getAttribute('src'));
+  const s = document.createElement('span');
+  s.className = 'emoji';
+  s.setAttribute('aria-hidden', 'true');
+  s.textContent = img.dataset.emoji || '';
+  img.replaceWith(s);
+}
+
+/** 画像を先に読み込んでおく(ゲーム中に絵が遅れて出ないように) */
+function preloadImages(list) {
+  list.forEach(src => { if (src && !missingImages.has(src)) { const i = new Image(); i.src = src; } });
 }
 
 /** 文字を HTML に入れても安全な形にする */

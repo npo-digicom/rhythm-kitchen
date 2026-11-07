@@ -14,6 +14,15 @@ const Zukan = (() => {
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
       if (saved && saved.found) record = saved;
     } catch (e) { /* 読めなければ空から */ }
+    // 動作確認用:アドレスの最後に ?reset=all で図鑑の記録も消す / ?zukan=all で全部見つけたことにする
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get('reset') === 'all') { record = { found: {} }; save(); }
+      if (q.get('zukan') === 'all') {
+        Data.get().ingredients.forEach(i => { if (!record.found[i.id]) record.found[i.id] = { first: 'test', count: 1 }; });
+        save();
+      }
+    } catch (e) { /* 無視 */ }
   }
 
   function save() {
@@ -48,40 +57,57 @@ const Zukan = (() => {
       if (has(ing.id)) {
         btn.className = 'zukan-cell';
         btn.style.setProperty('--c', ing.color);
-        btn.innerHTML = `<span class="z-icon">${ingredientIconHTML(ing)}</span><span class="z-name">${ing.name}</span>`;
+        btn.innerHTML = `<span class="z-icon${ing.variants.length > 1 ? ' z-variants' : ''}">${iconsHTML(ing)}</span>` +
+          `<span class="z-name">${ing.name}</span>`;
         btn.setAttribute('aria-label', ing.name + 'の説明を見る');
         btn.addEventListener('click', () => openDetail(ing, motions[ing.motion]));
       } else {
         btn.className = 'zukan-cell unknown';
         btn.innerHTML = '<span class="z-icon">?</span><span class="z-name">まだ</span>';
         btn.setAttribute('aria-label', 'まだ見つけていない食材');
-        btn.addEventListener('click', () => openUnknown());
+        btn.addEventListener('click', () => openUnknown(ing));
       }
       li.appendChild(btn);
       grid.appendChild(li);
     });
   }
 
+  /** 色ちがいのある食材(パプリカ)は、全部の色を並べる */
+  function iconsHTML(ing) {
+    if (ing.variants.length > 1) {
+      return ing.variants.map(v => `<span class="z-variant">${ingredientIconHTML(ing, v.image)}</span>`).join('');
+    }
+    return ingredientIconHTML(ing);
+  }
+
   function openDetail(ing, motion) {
     modal = modal || document.getElementById('zukan-detail');
     modal.querySelector('.modal-card').style.setProperty('--c', ing.color);
-    document.getElementById('zukan-detail-icon').innerHTML = ingredientIconHTML(ing);
+    const icon = document.getElementById('zukan-detail-icon');
+    icon.classList.toggle('many', ing.variants.length > 1);
+    icon.innerHTML = ing.variants.length > 1
+      ? ing.variants.map(v => `<span class="detail-variant">${ingredientIconHTML(ing, v.image)}` +
+          `<span class="detail-variant-label">${escapeHTML(v.label || '')}</span></span>`).join('')
+      : ingredientIconHTML(ing);
     document.getElementById('zukan-detail-name').textContent = ing.name;
     const m = document.getElementById('zukan-detail-motion');
     m.textContent = motion ? `動き方:${motion.label}` : '';
     m.hidden = !motion;
     document.getElementById('zukan-detail-text').textContent = ing.description;
     modal.hidden = false;
-    document.getElementById('btn-zukan-close').focus();
+    document.getElementById('btn-zukan-close').focus({ preventScroll: true });
   }
 
-  function openUnknown() {
+  function openUnknown(ing) {
     modal = modal || document.getElementById('zukan-detail');
     modal.querySelector('.modal-card').style.removeProperty('--c');
+    document.getElementById('zukan-detail-icon').classList.remove('many');
     document.getElementById('zukan-detail-icon').textContent = '?';
     document.getElementById('zukan-detail-name').textContent = 'まだ見つけていません';
     document.getElementById('zukan-detail-motion').hidden = true;
-    document.getElementById('zukan-detail-text').textContent = 'ゲームでつかまえると、ここに説明が出ます。';
+    document.getElementById('zukan-detail-text').textContent = ing && ing.inGame === false
+      ? 'この食材は、まだゲームには出てきません。'
+      : 'ゲームですくうと、ここに説明が出ます。';
     modal.hidden = false;
   }
 

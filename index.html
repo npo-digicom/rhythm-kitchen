@@ -6,35 +6,41 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#FFF4E2">
-  <title>リズムキッチン 食材すくい</title>
+  <title>リズムキッチン ペトロス君と作る!ギリシャ料理</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <!-- スマホの形の枠。iPhoneでは画面いっぱい、パソコンでは中央にスマホの形で表示 -->
 <div id="app">
 
-  <!-- ① はじまりの画面 -->
-  <section id="screen-start" class="screen active" aria-label="はじまり">
-    <div class="scroll">
-      <div class="start-inner">
-        <div class="start-logo" aria-hidden="true">🥘</div>
-        <h1 class="start-title">リズムキッチン</h1>
-        <p class="start-sub">食材すくい</p>
+  <!-- ① トップページ(背景:ギリシャの窓とキッチン) -->
+  <section id="screen-start" class="screen active" aria-label="トップページ">
+    <!-- 空をときどき横切るアモネス君 -->
+    <div id="home-amones" class="home-amones" aria-hidden="true"></div>
+    <div class="scroll home-scroll">
+      <div class="home-inner">
+        <header class="home-head">
+          <h1 class="home-title">リズムキッチン</h1>
+          <p class="home-sub">ペトロス君と作る!ギリシャ料理</p>
+        </header>
 
-        <ol class="howto card">
-          <li><span class="howto-icon" aria-hidden="true">🐟</span>いろいろな食材が動きます</li>
-          <li><span class="howto-icon" aria-hidden="true">👆</span>タップすると網ですくえます</li>
-          <li><span class="howto-icon" aria-hidden="true">🧺</span>ザルにたまった食材で料理ができます</li>
-          <li><span class="howto-icon" aria-hidden="true">🍽️</span>ペリカンの注文をめざしてみましょう</li>
-        </ol>
-        <p class="start-note">にがしても大丈夫。またやってきます。</p>
-
-        <button id="btn-start" class="btn btn-primary" type="button" disabled>じゅんび中…</button>
-        <div class="btn-pair">
-          <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
-          <button id="btn-book-from-start" class="btn btn-secondary" type="button">📒 スタンプ帳</button>
+        <div class="home-middle">
+          <div id="home-petros" class="home-petros" aria-hidden="true"></div>
+          <div class="home-story" aria-live="polite">
+            <p class="home-story-head"><span id="home-story-title">おはなし</span><span id="home-story-label" class="home-story-label" hidden></span></p>
+            <p id="home-story-text" class="home-story-text"></p>
+          </div>
         </div>
-        <p id="load-error" class="load-error" hidden></p>
+
+        <div class="home-bottom">
+          <button id="btn-start" class="btn btn-primary btn-start" type="button" disabled>じゅんび中…</button>
+          <div class="btn-pair">
+            <button id="btn-zukan-from-start" class="btn btn-secondary" type="button">📖 食材図鑑</button>
+            <button id="btn-book-from-start" class="btn btn-secondary" type="button">📜 ペトロス君の物語</button>
+          </div>
+          <p id="load-error" class="load-error" hidden></p>
+          <p id="home-credit" class="home-credit"></p>
+        </div>
       </div>
     </div>
   </section>
@@ -47,7 +53,14 @@
           <span class="hud-icon" aria-hidden="true">⏳</span>
           <div id="timer-bar" role="progressbar" aria-label="のこり時間"><div id="timer-fill"></div><div id="timer-marks"></div></div>
         </div>
-        <div id="order-chip" hidden><span id="order-chip-pelican" class="order-chip-pelican"></span><span>注文:<b id="order-chip-name"></b></span></div>
+        <!-- 注文カード:注文の料理に使う食材。すくうと ✓ -->
+        <div id="order-card" class="order-card-hud" hidden>
+          <span id="order-card-pelican" class="order-card-pelican"></span>
+          <div class="order-card-body">
+            <p class="order-card-title">注文:<b id="order-card-name"></b></p>
+            <ul id="order-card-ings" class="order-card-ings"></ul>
+          </div>
+        </div>
       </div>
 
       <div id="ingredients-layer"></div>
@@ -73,7 +86,8 @@
         <div class="order-card">
           <div id="order-pelican" class="order-pelican"></div>
           <p id="order-text" class="speech speech-big"></p>
-          <p id="order-emoji" class="order-emoji" aria-hidden="true"></p>
+          <p class="order-hint">光る食材をすくいましょう</p>
+          <ul id="order-ings" class="order-ings"></ul>
           <button id="btn-order-ok" class="btn btn-primary" type="button">まかせて!</button>
         </div>
       </div>
@@ -103,14 +117,8 @@
         <!-- 新しいおはなしの知らせ(タップで読む) -->
         <div id="story-notices" class="story-notices"></div>
 
-        <div id="stamp-card" class="card stamp-card">
-          <h3 id="stamp-card-title" class="card-title">たまったスタンプ</h3>
-          <div id="stamp-row" class="stamp-row"></div>
-          <p id="stamp-card-text" class="stamp-card-text"></p>
-        </div>
-
         <div class="card caught-card">
-          <h3 class="card-title">つかまえた食材</h3>
+          <h3 class="card-title">すくった食材</h3>
           <ul id="caught-list" class="caught-list"></ul>
         </div>
 
@@ -123,16 +131,10 @@
           <ol id="recipe-steps" class="recipe-steps"></ol>
         </div>
 
-        <div class="card koba-card">
-          <h3 id="koba-heading" class="card-title koba-heading">⚓ 港のこばなし</h3>
-          <p id="koba-text" class="koba-text"></p>
-          <button id="btn-koba" class="btn btn-koba" type="button">もうひとつ、おはなし</button>
-        </div>
-
         <button id="btn-retry" class="btn btn-primary" type="button">もう一度遊ぶ</button>
         <div class="btn-pair">
           <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
-          <button id="btn-book-from-complete" class="btn btn-secondary" type="button">📒 スタンプ帳</button>
+          <button id="btn-book-from-complete" class="btn btn-secondary" type="button">📜 ペトロス君の物語</button>
         </div>
       </div>
     </div>
@@ -161,34 +163,26 @@
     </div>
   </section>
 
-  <!-- ⑤ スタンプ帳 -->
-  <section id="screen-book" class="screen" aria-label="スタンプ帳">
+  <!-- ⑤ ペトロス君の物語 -->
+  <section id="screen-book" class="screen" aria-label="ペトロス君の物語">
     <header class="zukan-header">
       <button id="btn-book-back" class="btn-back" type="button">← もどる</button>
-      <h2 id="book-title" class="zukan-title">スタンプ帳</h2>
+      <h2 id="book-title" class="zukan-title">ペトロス君の物語</h2>
     </header>
     <div class="scroll">
       <div class="book-inner">
+        <div class="book-banner">
+          <div id="book-banner-art" class="book-banner-art" aria-hidden="true"></div>
+          <p id="book-progress" class="book-progress"></p>
+        </div>
         <section class="book-section">
-          <h3 id="book-characters-heading" class="book-heading">登場する鳥たち</h3>
+          <h3 id="book-characters-heading" class="book-heading">登場するみんな</h3>
           <ul id="book-characters" class="book-characters"></ul>
         </section>
         <section class="book-section">
-          <h3 id="book-stamps-heading" class="book-heading">たまったスタンプ</h3>
-          <p id="book-stamps-count" class="book-stamps-count"></p>
-          <ul id="book-stamps" class="book-stamps"></ul>
-          <p id="book-stamps-next" class="book-note"></p>
-        </section>
-        <section class="book-section">
-          <h3 id="book-chapters-heading" class="book-heading">本編のおはなし</h3>
+          <h3 id="book-chapters-heading" class="book-heading">本編</h3>
           <ul id="book-chapters" class="book-chapters"></ul>
         </section>
-        <section class="book-section">
-          <h3 id="book-guests-heading" class="book-heading">特別なお客さま</h3>
-          <p id="book-guests-count" class="book-stamps-count"></p>
-          <ul id="book-guests" class="zukan-grid book-guests"></ul>
-        </section>
-        <p id="book-disclaimer" class="book-disclaimer"></p>
       </div>
     </div>
   </section>
@@ -200,9 +194,19 @@
       <div id="reader-art" class="reader-art"></div>
       <h3 id="reader-title" class="reader-title"></h3>
       <p id="reader-text" class="reader-text"></p>
+      <div id="reader-foot" class="reader-foot" hidden>
+        <p id="reader-disclaimer" class="reader-disclaimer"></p>
+        <p id="reader-credit" class="reader-credit"></p>
+      </div>
       <button id="btn-reader-close" class="btn btn-primary" type="button">とじる</button>
     </div>
   </div>
+
+  <!-- 音のオン・オフ(どの画面でも右上) -->
+  <button id="btn-sound" class="btn-sound" type="button" aria-pressed="false" aria-label="音を消す">
+    <span id="sound-icon" class="sound-icon" aria-hidden="true">🔊</span>
+    <span id="sound-label" class="sound-label">音あり</span>
+  </button>
 
 </div>
 

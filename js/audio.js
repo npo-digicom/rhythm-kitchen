@@ -7,30 +7,57 @@
  *   "fanfare": "audio/fanfare.mp3"
  * のように名前とファイルを書きます(名前は下の SYNTH を参照)。
  *
- * 曲(BGM)の差し替え:
- *   data/settings.json の bgm.file に 'audio/piccadilly.mp3' のように書くだけ。
+ * 曲(BGM):
+ *   data/settings.json の bgm に、ファイルと「くり返す部分」(loopStart〜loopEnd 秒)を書きます。
+ *   つなぎ目は fadeSec 秒のフェードで、なめらかに重ねます。
  *   ファイルが無い・読めないときは、静かに拍の音だけで進みます。
+ *
+ * 音のオン・オフ:setMuted(true/false)。すべての音は master(音量のつまみ)を通ります。
  */
 const Sound = (() => {
   let ctx = null;
   let unlocked = false;
   let bgmBuffer = null;
-  let bgmSource = null;
-  let bgmGain = null;
+  let bgmGain = null;          // 曲全体の音量
+  let bgmTimer = null;         // 次のくり返しを予約するタイマー
+  let bgmVoices = [];          // 鳴っている(鳴る予定の)曲のかけら
+  let bgmOpts = null;
   let noiseBuffer = null;
+  let master = null;           // すべての音の出口(オン・オフ用)
+  let muted = false;
 
   function getCtx() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
+      master = ctx.createGain();
+      master.gain.value = muted ? 0 : 1;
+      master.connect(ctx.destination);
     }
     return ctx;
   }
+
+  /** 音の出口(ここにつなぐと、オン・オフが効く) */
+  function out() { getCtx(); return master; }
+
+  /** 音のオン・オフ */
+  function setMuted(m) {
+    muted = !!m;
+    if (master) {
+      const t = ctx.currentTime;
+      master.gain.cancelScheduledValues(t);
+      master.gain.setValueAtTime(master.gain.value, t);
+      master.gain.linearRampToValueAtTime(muted ? 0 : 1, t + 0.15);
+    }
+  }
+  function isMuted() { return muted; }
 
   /**
    * iPhone の Safari では、タップの処理の中で一度音を鳴らさないと
    * 音が出ません。ボタンを押したときに必ず呼んでください。
    */
   function unlock() {
+    // iPhone のマナーモード(消音スイッチ)でも曲が鳴るように(対応している Safari だけ)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* 無視 */ }
     const c = getCtx();
     if (c.state === 'suspended') c.resume();
     if (unlocked) return;
@@ -67,7 +94,7 @@ const Sound = (() => {
     gain.gain.setValueAtTime(vol, start);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     osc.connect(gain);
-    gain.connect(c.destination);
+    gain.connect(out());
     osc.start(start);
     osc.stop(start + dur + 0.02);
   }
@@ -86,7 +113,7 @@ const Sound = (() => {
     gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     src.connect(filter);
     filter.connect(gain);
-    gain.connect(c.destination);
+    gain.connect(out());
     src.start(start);
     src.stop(start + dur + 0.02);
   }
@@ -105,7 +132,7 @@ const Sound = (() => {
     gain.gain.setValueAtTime(vol * 0.8, start + Math.max(0.04, dur - 0.08));
     gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     filter.connect(gain);
-    gain.connect(c.destination);
+    gain.connect(out());
     [-6, 6].forEach(det => {
       const o = c.createOscillator();
       o.type = 'sawtooth';
@@ -130,7 +157,7 @@ const Sound = (() => {
     gain.gain.linearRampToValueAtTime(vol, start + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     osc.connect(gain);
-    gain.connect(c.destination);
+    gain.connect(out());
     osc.start(start);
     osc.stop(start + dur + 0.05);
     return osc;
@@ -283,7 +310,7 @@ const Sound = (() => {
         const c = getCtx();
         const src = c.createBufferSource();
         src.buffer = buf;
-        src.connect(c.destination);
+        src.connect(out());
         src.start();
         return;
       }
@@ -317,35 +344,79 @@ const Sound = (() => {
   }
 
   function hasBGM() { return !!bgmBuffer; }
+  function isBGMPlaying() { return !!bgmTimer; }
 
-  function startBGM(volume) {
+  /**
+   * 曲の loopStart〜loopEnd の部分をくり返し流す。
+   * かけらを少しずつ重ねて置き、重なったところをフェードでつなぐ。
+   * opts = { volume, loopStart, loopEnd, fadeSec }
+   */
+  function startBGM(opts) {
     if (!bgmBuffer) return;
-    stopBGM();
+    stopBGM(0.05);
     const c = getCtx();
-    bgmSource = c.createBufferSource();
-    bgmSource.buffer = bgmBuffer;
-    bgmSource.loop = true;
+    const dur = bgmBuffer.duration;
+    const o = Object.assign({ volume: 0.7, loopStart: 0, loopEnd: 0, fadeSec: 0.6 }, opts || {});
+    const a = Math.max(0, Math.min(dur - 1, Number(o.loopStart) || 0));
+    let b = Number(o.loopEnd) || dur;
+    if (b <= a + 1 || b > dur) b = dur;
+    const fade = Math.max(0.02, Math.min(Number(o.fadeSec) || 0.6, (b - a) / 4));
+    bgmOpts = { a, b, fade, len: b - a };
     bgmGain = c.createGain();
-    bgmGain.gain.value = volume == null ? 0.8 : volume;
-    bgmSource.connect(bgmGain);
-    bgmGain.connect(c.destination);
-    bgmSource.start();
+    bgmGain.gain.value = o.volume == null ? 0.7 : o.volume;
+    bgmGain.connect(out());
+    let next = c.currentTime + 0.08;
+    const schedule = () => {
+      // 2秒先までのかけらを予約しておく
+      while (next < c.currentTime + 2) {
+        bgmVoices.push(playPiece(next));
+        next += bgmOpts.len - bgmOpts.fade;
+      }
+      const now = c.currentTime;
+      bgmVoices = bgmVoices.filter(v => v.end > now);
+    };
+    schedule();
+    bgmTimer = setInterval(schedule, 400);
   }
 
-  function stopBGM() {
-    if (!bgmSource) return;
+  /** 曲のかけらを1つ:フェードインして始まり、フェードアウトで終わる */
+  function playPiece(when) {
+    const c = getCtx();
+    const { a, len, fade } = bgmOpts;
+    const src = c.createBufferSource();
+    src.buffer = bgmBuffer;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(1, when + fade);
+    g.gain.setValueAtTime(1, when + len - fade);
+    g.gain.linearRampToValueAtTime(0, when + len);
+    src.connect(g);
+    g.connect(bgmGain);
+    src.start(when, a, len);
+    return { src, end: when + len };
+  }
+
+  /** 曲を止める(ふわっと小さくしてから) */
+  function stopBGM(fadeOut) {
+    if (bgmTimer) clearInterval(bgmTimer);
+    bgmTimer = null;
+    if (!bgmGain) return;
+    const f = fadeOut == null ? 0.8 : fadeOut;
     try {
       const t = getCtx().currentTime;
+      bgmGain.gain.cancelScheduledValues(t);
       bgmGain.gain.setValueAtTime(bgmGain.gain.value, t);
-      bgmGain.gain.linearRampToValueAtTime(0.0001, t + 0.6);
-      bgmSource.stop(t + 0.65);
+      bgmGain.gain.linearRampToValueAtTime(0.0001, t + f);
+      bgmVoices.forEach(v => { try { v.src.stop(t + f + 0.05); } catch (_) {} });
     } catch (_) {}
-    bgmSource = null;
+    bgmVoices = [];
+    bgmGain = null;
   }
 
   return {
     unlock, play, loadEffects,
     playBeat, playScoop, playMiss, playDrop, playSmoke, playPop, playDing,
-    loadBGM, hasBGM, startBGM, stopBGM,
+    loadBGM, hasBGM, isBGMPlaying, startBGM, stopBGM,
+    setMuted, isMuted,
   };
 })();

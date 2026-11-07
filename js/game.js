@@ -53,9 +53,8 @@ const Game = (() => {
   let order = null;            // ペリカンの注文(料理)
   let orderIds = new Set();    // 注文の料理に使う食材
   let popTimer = null;
-  let guestPlans = [];         // このゲームで来る特別なお客さま { guest, at }
-  let guestNow = null;         // いま画面にいるお客さま
-  let guestsMet = [];          // このゲームでタップして会えたお客さま
+  let orderGot = new Set();    // 注文カードで ✓ がついた食材
+  let pileSpread = 1;          // 器の中で食材を横に広げる倍率
 
   function init() {
     S = Data.get().settings;
@@ -104,13 +103,52 @@ const Game = (() => {
     orderIds = Dishes.dishIngredientIds(order);
     resetField();
 
-    document.getElementById('order-chip').hidden = true;
-    document.getElementById('order-pelican').innerHTML = Art.pelican();
+    document.getElementById('order-card').hidden = true;
+    document.getElementById('order-pelican').innerHTML = Art.pelican('order');
     document.getElementById('order-text').innerHTML =
-      escapeHTML(Data.get().settings.pelican.ask).replace('{dish}', `<b>${escapeHTML(order.name)}</b>`);
-    document.getElementById('order-emoji').textContent = (order.emoji || []).join(' ');
+      escapeHTML(Data.get().settings.pelican.ask).replace('{dish}', `<b>${escapeHTML(order.orderName || order.name)}</b>`);
+    // 注文の料理に使う食材の絵(ゲーム中は、この食材が金色に光ります)
+    document.getElementById('order-ings').innerHTML = orderIngredients().map(ing =>
+      `<li><span class="oi-icon">${ingredientIconHTML(ing)}</span><span class="oi-name">${escapeHTML(ing.name)}</span></li>`).join('');
     document.getElementById('order-overlay').hidden = false;
     Sound.play('pelican');
+  }
+
+  /** 注文の料理に使う食材(ゲームに出てくるものだけ) */
+  function orderIngredients() {
+    const { byId } = Data.get();
+    return [...orderIds].map(id => byId[id]).filter(ing => ing && ing.inGame);
+  }
+
+  // ── 注文カード(画面の上。すくった食材に ✓) ─────────────
+  function buildOrderCard() {
+    orderGot = new Set();
+    const card = document.getElementById('order-card');
+    card.classList.remove('complete');
+    document.getElementById('order-card-pelican').innerHTML = Art.pelican('order');
+    document.getElementById('order-card-name').textContent = order.orderName || order.name;
+    document.getElementById('order-card-ings').innerHTML = orderIngredients().map(ing =>
+      `<li data-id="${ing.id}" aria-label="${escapeHTML(ing.name)}"><span class="oc-icon">${ingredientIconHTML(ing)}</span>` +
+      '<span class="oc-check" aria-hidden="true">✓</span></li>').join('');
+    card.hidden = false;
+  }
+
+  function checkOrderCard(id) {
+    if (!orderIds.has(id) || orderGot.has(id)) return;
+    orderGot.add(id);
+    const li = document.querySelector(`#order-card-ings li[data-id="${id}"]`);
+    if (li) li.classList.add('got');
+    const need = orderIngredients();
+    if (need.length && need.every(ing => orderGot.has(ing.id))) {
+      const card = document.getElementById('order-card');
+      card.classList.add('complete');
+      Sound.play('sparkle');
+      const r = card.getBoundingClientRect(), fr = field.getBoundingClientRect();
+      for (let i = 0; i < 14; i++) {
+        sparkle(r.left - fr.left + Math.random() * r.width, r.top - fr.top + Math.random() * r.height, true);
+      }
+      setTimeout(() => pelicanSay(S.pelican.cardComplete, 1800), 300);
+    }
   }
 
   function resetField() {
@@ -124,9 +162,7 @@ const Game = (() => {
   }
 
   function begin() {
-    document.getElementById('order-chip-pelican').innerHTML = Art.pelican();
-    document.getElementById('order-chip-name').textContent = order.name;
-    document.getElementById('order-chip').hidden = false;
+    buildOrderCard();
     drawTimerMarks();
     playing = true;
     gameTime = 0;
@@ -145,9 +181,6 @@ const Game = (() => {
     gull = null;
     nextGullAt = null;
     gullCount = 0;
-    guestPlans = Story.planGuests();
-    guestNow = null;
-    guestsMet = [];
     layer.innerHTML = '';
     fx.innerHTML = '';
     pile.innerHTML = '';
@@ -158,8 +191,9 @@ const Game = (() => {
     catchMsg.classList.remove('show');
     timerFill.style.transform = 'scaleX(1)';
 
-    useBeatSound = S.beatSound && (!Sound.hasBGM() || (S.bgm && S.bgm.beatSoundWithBgm));
-    if (Sound.hasBGM()) Sound.startBGM(S.bgm && S.bgm.volume);
+    // 曲は「はじめる」を押したときに始まっています(iPhone で鳴らすため)。止まっていればここで
+    useBeatSound = S.beatSound && (!Sound.hasBGM() || S.bgm.beatSoundWithBgm);
+    if (Sound.hasBGM() && !Sound.isBGMPlaying()) Sound.startBGM(S.bgm);
 
     showBig(startCount, 'はじめ!', 1300);
 
@@ -199,7 +233,6 @@ const Game = (() => {
     updateIngredients(dt);
     updateLoose(dt);
     updateSeagull(dt);
-    updateGuest(dt);
 
     if (gameTime >= S.gameSeconds) {
       finish();
@@ -229,7 +262,7 @@ const Game = (() => {
   function paceAllows(spawnUntil) {
     if (active.length === 0) return true;
     if (S.appearance.pacing === false) return true;
-    const stock = Data.get().ingredients.reduce((n, x) => n + Math.max(0, maxAppear(x.id) - (appeared[x.id] || 0)), 0);
+    const stock = Data.get().gameIngredients.reduce((n, x) => n + Math.max(0, maxAppear(x.id) - (appeared[x.id] || 0)), 0);
     if (stock <= 0) return false;
     const interval = Math.max(0, spawnUntil - gameTime) / stock;
     return gameTime - lastSpawnAt >= interval * 0.9;
@@ -265,10 +298,16 @@ const Game = (() => {
 
   function setVessel(id) {
     vesselId = id;
-    document.getElementById('vessel-art').innerHTML = Art.vessel(id);
-    const pb = vesselInfo(id).pileBottom;
+    const info = vesselInfo(id);
+    const art = document.getElementById('vessel-art');
+    art.innerHTML = Art.vessel(id);
+    art.style.height = (Number(info.artHeight) || 92) + 'px';
+    const pb = info.pileBottom;
     pileBottom = pb == null ? 70 : pb;
     pile.style.bottom = pileBottom + 'px';
+    pileSpread = Number(info.pileSpread) > 0 ? Number(info.pileSpread) : 1;
+    // 器の中の食材を、新しい器の広さに並べ直す
+    basketItems.forEach(b => { if (b.el) b.el.style.left = `calc(50% + ${pileSlot(b.slotIndex).sx * pileSpread}px)`; });
   }
 
   /**
@@ -341,7 +380,7 @@ const Game = (() => {
   }
 
   function nextIngredient() {
-    const { byId, ingredients } = Data.get();
+    const { byId, gameIngredients: ingredients } = Data.get();
     const onScreen = new Set(active.map(a => a.ing.id));
     // にがした食材が戻ってくる時間になっていれば、それを優先
     const i = comeback.findIndex(c => c.at <= gameTime && !onScreen.has(c.id));
@@ -364,8 +403,13 @@ const Game = (() => {
   }
 
   function spawn() {
-    const ing = nextIngredient();
+    let ing = nextIngredient();
     if (!ing) return;
+    // 色ちがいのある食材(パプリカ)は、出てくるたびに色をランダムに選ぶ
+    if (ing.variants.length) {
+      const v = ing.variants[Math.floor(Math.random() * ing.variants.length)];
+      ing = Object.assign({}, ing, { image: v.image, color: v.color || ing.color });
+    }
     appeared[ing.id] = (appeared[ing.id] || 0) + 1;
     lastSpawnId = ing.id;
     lastSpawnAt = gameTime;
@@ -374,7 +418,8 @@ const Game = (() => {
     const seconds = (motionDef.seconds || 8) / ((S.speedScale || 1) * (phase().speed || 1));
 
     const el = document.createElement('div');
-    el.className = 'ing';
+    // 注文の料理に使う食材は、ふわっと金色に光る(CSS の .ing.is-order)
+    el.className = 'ing' + (orderIds.has(ing.id) ? ' is-order' : '');
     el.style.setProperty('--ing-size', g.size + 'px');
     el.style.setProperty('--c', ing.color);
     el.innerHTML =
@@ -431,13 +476,6 @@ const Game = (() => {
       return;
     }
 
-    // 特別なお客さま(タップで特別なスタンプ)
-    if (guestNow && guestNow.state === 'float' &&
-        Math.hypot(guestNow.x - x, guestNow.y - y) < Data.get().settings.story.guestTapRadius) {
-      meetGuest();
-      return;
-    }
-
     // こぼれた食材が先(タップで器に戻す)。当たりの範囲は広め
     let lb = null, lbD = Infinity;
     loose.forEach(l => {
@@ -475,6 +513,7 @@ const Game = (() => {
     const isNew = Zukan.add(id);
     Sound.playScoop();
     showCatch(a.ing, isNew);
+    checkOrderCard(id);
 
     // 網がサッとすくう
     const net = document.createElement('div');
@@ -520,9 +559,20 @@ const Game = (() => {
   function pickEntry(ing) {
     if (forcedEntry) return forcedEntry;
     const E = S.entry;
+    // 注文に使わない食材は、跳ねて外へ出やすい(出なければ、そのまま入る)
+    if (!orderIds.has(ing.id)) return weightedPick(E.offOrderWeights);
     const w = Object.assign({}, E.weights, ing.entry || {});
     const trouble = phase().troubleScale == null ? 1 : phase().troubleScale;
     ['fuchi', 'bonbon', 'makikomi'].forEach(k => { w[k] = (Number(w[k]) || 0) * trouble; });
+    const keys = ENTRY_MODES.filter(k => Number(w[k]) > 0);
+    const total = keys.reduce((n, k) => n + Number(w[k]), 0);
+    if (!total) return 'sutto';
+    let r = Math.random() * total;
+    for (const k of keys) { r -= Number(w[k]); if (r <= 0) return k; }
+    return 'sutto';
+  }
+
+  function weightedPick(w) {
     const keys = ENTRY_MODES.filter(k => Number(w[k]) > 0);
     const total = keys.reduce((n, k) => n + Number(w[k]), 0);
     if (!total) return 'sutto';
@@ -678,7 +728,8 @@ const Game = (() => {
   }
 
   function showCatch(ing, isNew) {
-    catchMsg.innerHTML = `${ing.emoji} ${ing.name}!` + (isNew ? '<span class="new">図鑑に追加</span>' : '');
+    catchMsg.innerHTML = `<span class="cm-icon">${ingredientIconHTML(ing)}</span>${escapeHTML(ing.name)}!` +
+      (isNew ? '<span class="new">図鑑に追加</span>' : '');
     catchMsg.style.borderColor = ing.color;
     catchMsg.classList.add('show');
     clearTimeout(catchTimer);
@@ -715,7 +766,7 @@ const Game = (() => {
     const br = basket.getBoundingClientRect();
     const slot = pileSlot(k);
     return {
-      x: br.left - fr.left + br.width / 2 + slot.sx,
+      x: br.left - fr.left + br.width / 2 + slot.sx * pileSpread,
       y: br.bottom - fr.top - pileBottom - slot.sy - 22,
     };
   }
@@ -741,7 +792,7 @@ const Game = (() => {
       const slot = pileSlot(slotIndex);
       const el = document.createElement('div');
       el.className = 'pile-item';
-      el.style.left = `calc(50% + ${slot.sx}px)`;
+      el.style.left = `calc(50% + ${slot.sx * pileSpread}px)`;
       el.style.bottom = slot.sy + 'px';
       el.style.zIndex = String(slotIndex + 1);
       el.innerHTML = ingredientIconHTML(ing);
@@ -758,8 +809,9 @@ const Game = (() => {
     releaseSlot(item.slotIndex);
   }
 
-  // ── カモメ(器の食材を1つくわえて逃げようとする) ───────
-  const GULL_W = 130, GULL_H = 84;
+  // ── アモネス君(カモメ。器の食材を1つくわえて逃げようとする) ──
+  // 絵は左向き。右へ進むときは .flip で左右反転する
+  const GULL_W = 132, GULL_H = 128;
 
   function updateSeagull(dt) {
     const G = S.seagull;
@@ -776,7 +828,7 @@ const Game = (() => {
       const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
       const target = basketItems.includes(gull.item) && gull.item.el ? elCenter(gull.item.el) : gull.target;
       gull.target = target;
-      placeGull(gull.sx + (target.x - gull.sx) * e, gull.sy + (target.y - 34 - gull.sy) * e - Math.sin(p * Math.PI) * 50);
+      placeGull(gull.sx + (target.x - gull.sx) * e, gull.sy + (target.y - 50 - gull.sy) * e - Math.sin(p * Math.PI) * 50);
       if (p >= 1) grabItem();
     } else {
       const p = Math.min(1, gull.t / G.escapeSec);
@@ -793,9 +845,11 @@ const Game = (() => {
     const w = field.clientWidth;
     const dir = Math.random() < 0.5 ? 1 : -1;     // 1 = 左から右へ
     const el = document.createElement('div');
-    el.className = 'gull' + (dir < 0 ? ' flip' : '');
-    el.innerHTML = `<div class="gull-art">${Art.seagull()}</div><div class="gull-carry"></div>` +
-      (gullCount === 0 ? '<div class="gull-hint">タップで追い払おう!</div>' : '');
+    el.className = 'gull' + (dir > 0 ? ' flip' : '');
+    // 急降下の絵と、くわえて飛び上がる絵(くわえたら入れ替える)
+    el.innerHTML = `<div class="gull-art gull-dive">${Art.seagull('dive')}</div>` +
+      `<div class="gull-art gull-rise">${Art.seagull('rise')}</div><div class="gull-carry"></div>` +
+      (gullCount === 0 ? '<div class="gull-hint">タップで追い払えます</div>' : '');
     fx.appendChild(el);
     gullCount++;
     const top = document.getElementById('hud').getBoundingClientRect().bottom - field.getBoundingClientRect().top;
@@ -814,6 +868,13 @@ const Game = (() => {
     gull.x = x;
     gull.y = y;
     gull.el.style.transform = `translate3d(${x - GULL_W / 2}px, ${y - GULL_H / 2}px, 0)`;
+    // 「タップで追い払えます」の札が、画面の外にはみ出さないように
+    const hint = gull.el.querySelector('.gull-hint');
+    if (hint) {
+      const half = hint.offsetWidth / 2, w = field.clientWidth;
+      const shift = Math.max(half + 6 - x, Math.min(0, w - 6 - half - x));
+      hint.style.marginLeft = shift + 'px';
+    }
   }
 
   // 食材をくわえる
@@ -860,7 +921,8 @@ const Game = (() => {
   function flyAway(g, ms) {
     const away = g.dir > 0 ? -1 : 1;   // 来た方向へ戻る
     const x2 = g.x + away * (field.clientWidth + GULL_W);
-    g.el.classList.toggle('flip', away < 0);
+    g.el.classList.toggle('flip', away > 0);
+    g.el.classList.add('carrying-pose');
     g.el.animate([
       { transform: `translate3d(${g.x - GULL_W / 2}px, ${g.y - GULL_H / 2}px, 0)` },
       { transform: `translate3d(${x2 - GULL_W / 2}px, ${g.y - GULL_H / 2 - 260}px, 0)` },
@@ -901,8 +963,9 @@ const Game = (() => {
     const w = field.clientWidth;
     const from = g.dir > 0 ? 1 : -1;   // カモメの行く先の側から来る
     const pel = document.createElement('div');
-    pel.className = 'pelican-fly' + (from > 0 ? ' flip' : '');
-    pel.innerHTML = `<div class="pelican-fly-art">${Art.pelican()}</div><div class="pelican-fly-carry"></div>` +
+    // 絵は左向き。左から来るとき(右へ進む)は左右反転
+    pel.className = 'pelican-fly' + (from < 0 ? ' flip' : '');
+    pel.innerHTML = `<div class="pelican-fly-art">${Art.pelican('fly')}</div><div class="pelican-fly-carry"></div>` +
       `<div class="speech pelican-fly-speech" hidden></div>`;
     fx.appendChild(pel);
     const P = 120;
@@ -946,67 +1009,6 @@ const Game = (() => {
     gull = null;
   }
 
-  // ── 特別なお客さま ──────────────────────────────────────
-  // キラキラ光りながら、ゆっくり画面を横切る。タップすると特別なスタンプ。ゲームは止めない
-  const GUEST_SIZE = 116;
-
-  function updateGuest(dt) {
-    const C = Data.get().settings.story;
-    const stay = Math.max(3, Number(C.guestStaySec) || 11);
-    if (!guestNow) {
-      if (!guestPlans.length || gameTime < guestPlans[0].at) return;
-      const plan = guestPlans.shift();
-      // 終わり間近なら来ない(横切る時間が足りないため)
-      if (gameTime < S.gameSeconds - stay - 1) spawnGuest(plan.guest, stay);
-      return;
-    }
-    const g = guestNow;
-    if (g.state !== 'float') return;
-    g.t += dt;
-    const p = g.t / g.stay;
-    const x = g.sx + (g.ex - g.sx) * p;
-    const y = g.baseY + Math.sin(g.t * 1.3) * 26;
-    placeGuest(x, y);
-    g.sparkleIn -= dt;
-    if (g.sparkleIn <= 0) {
-      g.sparkleIn = 0.16;
-      sparkle(x + (Math.random() - 0.5) * GUEST_SIZE * 1.3, y + (Math.random() - 0.5) * GUEST_SIZE * 1.2, false);
-    }
-    if (p >= 1) { g.el.remove(); guestNow = null; }
-  }
-
-  function spawnGuest(guest, stay) {
-    const w = field.clientWidth;
-    const fr = field.getBoundingClientRect();
-    const top = document.getElementById('hud').getBoundingClientRect().bottom - fr.top;
-    const floor = basket.getBoundingClientRect().top - fr.top;
-    // 器より上の、まん中あたりを通る
-    const lo = top + GUEST_SIZE * 0.8, hi = Math.max(lo, floor - GUEST_SIZE * 1.1);
-    const dir = Math.random() < 0.5 ? 1 : -1;
-    const el = document.createElement('div');
-    el.className = 'guest' + (guest.golden ? ' golden' : '');
-    el.style.setProperty('--c', guest.color || '#C9A100');
-    el.innerHTML = '<div class="guest-halo"></div>' +
-      `<div class="guest-body">${Story.guestArt(guest)}</div>` +
-      `<div class="guest-hint">✨ ${escapeHTML(Data.get().story.labels.guestHint)}</div>`;
-    fx.appendChild(el);
-    guestNow = {
-      guest, el, t: 0, stay, state: 'float', sparkleIn: 0,
-      sx: dir > 0 ? -GUEST_SIZE * 0.6 : w + GUEST_SIZE * 0.6,
-      ex: dir > 0 ? w + GUEST_SIZE * 0.6 : -GUEST_SIZE * 0.6,
-      baseY: lo + Math.random() * (hi - lo),
-      x: 0, y: 0,
-    };
-    placeGuest(guestNow.sx, guestNow.baseY);
-    Sound.play('sparkle');
-  }
-
-  function placeGuest(x, y) {
-    guestNow.x = x;
-    guestNow.y = y;
-    guestNow.el.style.transform = `translate3d(${x - GUEST_SIZE / 2}px, ${y - GUEST_SIZE / 2}px, 0)`;
-  }
-
   /** キラッと光る粒。big=true のときは大きく広がる */
   function sparkle(x, y, big) {
     const s = document.createElement('span');
@@ -1021,38 +1023,6 @@ const Game = (() => {
     }
     fx.appendChild(s);
     setTimeout(() => s.remove(), big ? 1100 : 900);
-  }
-
-  function meetGuest() {
-    const g = guestNow;
-    g.state = 'met';
-    Story.meetGuest(g.guest.id);
-    guestsMet.push(g.guest);
-    Sound.play('sparkle');
-    for (let i = 0; i < 18; i++) sparkle(g.x, g.y, true);
-    g.el.classList.add('met');
-    const L = Data.get().story.labels;
-    const msg = document.createElement('div');
-    msg.className = 'guest-thanks';
-    msg.style.setProperty('--c', g.guest.color || '#C9A100');
-    msg.innerHTML = `<b>${escapeHTML(Story.fill(L.guestThanks, { name: g.guest.name }))}</b>` +
-      `<span>🏅 ${escapeHTML(L.guestStamp)}</span>`;
-    fx.appendChild(msg);
-    setTimeout(() => msg.remove(), 2600);
-    g.el.animate([
-      { transform: g.el.style.transform, opacity: 1 },
-      { transform: `translate3d(${g.x - GUEST_SIZE / 2}px, ${g.y - GUEST_SIZE / 2 - 120}px, 0) scale(1.3)`, opacity: 0 },
-    ], { duration: 1400, easing: 'ease-in', fill: 'forwards' }).onfinish = () => g.el.remove();
-    guestNow = null;
-  }
-
-  /** ゲームが終わるとき:まだいるお客さまは、ふわっと消える */
-  function clearGuest() {
-    guestPlans = [];
-    if (!guestNow) return;
-    const el = guestNow.el;
-    el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: 'forwards' }).onfinish = () => el.remove();
-    guestNow = null;
   }
 
   // ── 終了:煙がもくもく →「ボン!」→ チン! ─────────────────
@@ -1072,7 +1042,6 @@ const Game = (() => {
     // こぼれている途中の食材は、やさしく器に戻す
     loose.slice().forEach(l => rescueLoose(l, true));
     clearSeagull();
-    clearGuest();
 
     showBig(finaleText, 'そこまで!', 0);
 
@@ -1108,7 +1077,7 @@ const Game = (() => {
     later(3600, () => {
       finaleText.hidden = true;
       finaleText.classList.remove('boom');
-      if (onFinish) onFinish({ caught: Object.assign({}, caught), order, dish, guests: guestsMet.slice() });
+      if (onFinish) onFinish({ caught: Object.assign({}, caught), order, dish });
     });
   }
 
@@ -1147,7 +1116,7 @@ const Game = (() => {
   function pelicanSay(text, ms) {
     const box = document.getElementById('pelican-pop');
     const art = document.getElementById('pelican-pop-art');
-    if (!art.firstChild) art.innerHTML = Art.pelican();
+    if (!art.firstChild) art.innerHTML = Art.pelican('celebrate');
     document.getElementById('pelican-pop-text').textContent = text;
     box.hidden = false;
     box.classList.remove('show');
@@ -1177,12 +1146,5 @@ const Game = (() => {
   function debugForceEntry(mode) { forcedEntry = mode; }
   /** 動作確認用:すぐにカモメを呼ぶ */
   function debugSeagull() { if (!gull) nextGullAt = gameTime; }
-  /** 動作確認用:すぐに特別なお客さまを呼ぶ(Game.debugGuest() / Game.debugGuest('gold')) */
-  function debugGuest(id) {
-    if (!playing || guestNow) return;
-    const g = (id && Story.guests().find(x => x.id === id)) || Story.pickGuest();
-    if (g) guestPlans.unshift({ guest: g, at: gameTime });
-  }
-
-  return { init, start, stop, pelicanSay, debugSkip, debugState, debugForceEntry, debugSeagull, debugGuest };
+  return { init, start, stop, pelicanSay, debugSkip, debugState, debugForceEntry, debugSeagull };
 })();
