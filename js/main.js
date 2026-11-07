@@ -97,13 +97,11 @@ const App = (() => {
 
   // ── トップページ ────────────────────────────────────────
   function renderHome() {
-    const st = Data.get().story;
     $('home-petros').innerHTML = Art.pelican('home');
     $('home-amones').innerHTML = Art.seagull('fly');
-    $('home-story-title').textContent = st.labels.storyBoxTitle;
     const h = Story.homeStory();
     $('home-story-label').textContent = h.label;
-    $('home-story-label').hidden = !h.label;
+    $('home-story-head').hidden = !h.label;   // 「第○話」があるときだけ出す
     $('home-story-text').textContent = h.text;
     $('home-credit').textContent = Data.get().settings.bgm.credit || '';
   }
