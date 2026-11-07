@@ -1,22 +1,17 @@
 {
-  "_memo": "器の設定です。vessels は器の一覧、dishToVessel は「料理 → 器」の対応です。image の画像が無ければダミーの絵が出ます。pileBottom は器の底から食材を積み始める高さ(px)です。",
+  "_memo": "器の設定です。vessels は器の一覧、dishToVessel は「料理 → 器」の対応です。ゲームの終盤に、ザルがその料理の器に変わります。image が無い器(ザル)は、プログラムで描いた絵が出ます。artHeight=器の絵の高さ(px)、pileBottom=器の下から食材を積み始める高さ(px)、pileSpread=食材を横に広げる幅の倍率(1が基本)、squash=絵を上下につぶす割合(上から見た大皿を、ななめから見たように見せるため。1でそのまま)。",
   "start": "zaru",
-  "arriveMessage": "{vessel}がやってきた!",
-  "changeMessage": "やっぱり{vessel}にしよう!",
+  "arriveMessage": "{vessel}がやってきました!",
+  "changeMessage": "やっぱり{vessel}にしましょう!",
   "vessels": {
-    "zaru":           { "label": "ザル",                     "image": "images/vessel_zaru.png",           "pileBottom": 70 },
-    "donburi":        { "label": "どんぶり",                 "image": "images/vessel_donburi.png",        "pileBottom": 66 },
-    "paella_pan":     { "label": "パエリャ用のフライパン",   "image": "images/vessel_paella_pan.png",     "pileBottom": 48 },
-    "salad_bowl":     { "label": "サラダボウル",             "image": "images/vessel_salad_bowl.png",     "pileBottom": 66 },
-    "flower_platter": { "label": "花柄の大皿",               "image": "images/vessel_flower_platter.png", "pileBottom": 42 },
-    "tray_plates":    { "label": "お盆にのった小皿",         "image": "images/vessel_tray_plates.png",    "pileBottom": 42 }
+    "zaru":            { "label": "ザル",               "artHeight": 92,  "pileBottom": 70, "pileSpread": 1 },
+    "horiatiki_bowl":  { "label": "花柄のボウル",       "image": "images/vessel_horiatiki.webp",   "artHeight": 168, "pileBottom": 100, "pileSpread": 0.72 },
+    "plaki_dish":      { "label": "黄色い縁の耐熱皿",   "image": "images/vessel_psari_plaki.webp", "artHeight": 150, "pileBottom": 62,  "pileSpread": 0.82 },
+    "dakos_plate":     { "label": "青い渦巻きの大皿",   "image": "images/vessel_dakos.webp",       "artHeight": 250, "squash": 0.58, "pileBottom": 52, "pileSpread": 0.8 }
   },
   "dishToVessel": {
-    "kaisendon":   "donburi",
-    "bibimbap":    "paella_pan",
-    "greek_salad": "salad_bowl",
-    "greek_oven":  "flower_platter",
-    "focaccia":    "flower_platter",
-    "dakos":       "tray_plates"
+    "horiatiki":   "horiatiki_bowl",
+    "psari_plaki": "plaki_dish",
+    "dakos":       "dakos_plate"
   }
 }
