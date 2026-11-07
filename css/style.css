@@ -45,7 +45,7 @@ html, body {
   height: 100dvh;
   margin: 0 auto;
   overflow: hidden;
-  /* 背景画像(images/background.jpg 1080×1920)。無いときはグラデーション */
+  /* 背景画像(images/background.jpg ギリシャの窓とキッチン)。無いときはグラデーション */
   background:
     url('../images/background.jpg') center / cover no-repeat,
     linear-gradient(180deg, #FFF4E2 0%, #FFE2BA 60%, #F6C98F 100%);
@@ -136,55 +136,6 @@ html, body {
   min-height: 68px;
   font-size: 1.2rem;
 }
-.btn-koba {
-  background: #2E7DA6;
-  color: #fff;
-  min-height: 68px;
-  font-size: 1.15rem;
-  margin-top: 14px;
-  box-shadow: 0 5px 0 #1B5E80;
-}
-
-/* ── ① はじまり ───────────────────────────────────────────── */
-.start-inner {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-.start-logo  { font-size: 3.4rem; line-height: 1; }
-.start-title { font-size: 2.1rem; font-weight: 900; letter-spacing: 0.06em; line-height: 1.2; }
-.start-sub {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: #fff;
-  background: var(--orange);
-  padding: 2px 22px;
-  border-radius: 999px;
-}
-.howto { list-style: none; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; }
-.howto li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.4;
-}
-.howto-icon { font-size: 1.8rem; flex-shrink: 0; width: 2.2rem; text-align: center; }
-.start-note { font-size: 1rem; font-weight: 700; color: var(--ink-soft); text-align: center; }
-.load-error {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #9B1C1C;
-  background: #FFE9E9;
-  border: 2px solid #9B1C1C;
-  border-radius: 14px;
-  padding: 10px 14px;
-}
-
 /* ── ② ゲーム ─────────────────────────────────────────────── */
 #field {
   position: absolute;
@@ -361,32 +312,32 @@ html, body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 130px;
-  height: 84px;
+  width: 132px;
+  height: 128px;
   z-index: 3;
   will-change: transform;
 }
 .gull-art { position: absolute; inset: 0; animation: gull-bob 0.5s ease-in-out infinite alternate; }
 .gull.flip .gull-art { transform: scaleX(-1); }
 @keyframes gull-bob { from { translate: 0 -3px; } to { translate: 0 3px; } }
-.gull .wing { transform-box: fill-box; animation: flap 0.32s ease-in-out infinite alternate; }
-.gull .wing-back  { transform-origin: 100% 100%; }
-.gull .wing-front { transform-origin: 0% 100%; }
-@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-0.55); } }
+.gull-rise { display: none; }
+.gull.carrying .gull-dive, .gull.carrying-pose .gull-dive { display: none; }
+.gull.carrying .gull-rise, .gull.carrying-pose .gull-rise { display: block; }
+/* くわえた食材は、くちばしのあたり(絵は左向き) */
 .gull-carry {
   position: absolute;
-  right: -6px;
-  top: 46px;
-  width: 50px;
-  height: 50px;
+  left: -8px;
+  top: 52px;
+  width: 54px;
+  height: 54px;
   font-size: 40px;
-  line-height: 50px;
+  line-height: 54px;
   text-align: center;
   display: none;
 }
-.gull.flip .gull-carry { right: auto; left: -6px; }
+.gull.flip .gull-carry { left: auto; right: -8px; }
 .gull.carrying .gull-carry { display: block; }
-.gull-carry img, .pelican-fly-carry img { width: 100%; height: 100%; object-fit: contain; }
+.gull-carry img, .pelican-fly-carry img, .gull-carry .ing-img, .pelican-fly-carry .ing-img { width: 100%; height: 100%; object-fit: contain; }
 .gull-hint {
   position: absolute;
   left: 50%;
@@ -409,8 +360,8 @@ html, body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 126px;
   z-index: 4;
 }
 .pelican-fly-art { position: absolute; inset: 0; animation: pelican-flap 0.3s ease-in-out infinite alternate; }
@@ -418,15 +369,15 @@ html, body {
 @keyframes pelican-flap { from { translate: 0 -5px; } to { translate: 0 5px; } }
 .pelican-fly-carry {
   position: absolute;
-  right: 0;
-  top: 44px;
+  left: -6px;
+  top: 60px;
   width: 46px;
   height: 46px;
   font-size: 36px;
   line-height: 46px;
   text-align: center;
 }
-.pelican-fly.flip .pelican-fly-carry { right: auto; left: 0; }
+.pelican-fly.flip .pelican-fly-carry { left: auto; right: -6px; }
 .pelican-fly .pelican-fly-speech {
   position: absolute;
   left: 50%;
@@ -646,26 +597,7 @@ html, body {
   color: var(--ink);
 }
 .speech b { color: var(--orange); }
-.speech-big { font-size: 1.45rem; text-align: center; }
-
-/* 注文のチップ(ゲーム中、上のほう) */
-#order-chip {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 3px solid var(--orange);
-  border-radius: 999px;
-  padding: 2px 14px 2px 4px;
-  font-size: 1rem;
-  font-weight: 800;
-  line-height: 1.4;
-  max-width: 100%;
-}
-#order-chip[hidden] { display: none; }
-#order-chip b { color: var(--orange); }
-.order-chip-pelican { width: 40px; height: 40px; flex-shrink: 0; }
+.speech-big { font-size: 1.4rem; text-align: center; }
 
 /* 始まる前の注文 */
 .order-overlay {
@@ -702,7 +634,6 @@ html, body {
   border-bottom: 14px solid var(--ink);
   border-top: none;
 }
-.order-emoji { font-size: 2.4rem; letter-spacing: 0.1em; line-height: 1.2; text-align: center; }
 
 /* ゲーム中のペリカンのひとこと(左下から) */
 #pelican-pop {
@@ -881,129 +812,6 @@ html, body {
 .recipe-steps { padding-left: 1.6em; font-size: 1.05rem; line-height: 1.6; }
 .recipe-steps li { margin-bottom: 6px; }
 
-.koba-card {
-  background: #EAF6FB;
-  border: 4px solid #2E7DA6;
-}
-.koba-heading { color: #1B5E80; font-size: 1.3rem; }
-.koba-text { font-size: 1.25rem; line-height: 1.95; font-weight: 600; }
-.koba-text.refresh { animation: fade-in 0.4s ease-out; }
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
-}
-
-/* ── 特別なお客さま(ゲーム中。食材の丸とちがう、光る星形の後光) ── */
-.guest {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 116px;
-  height: 116px;
-  z-index: 5;
-  will-change: transform;
-  pointer-events: none;
-}
-.guest-halo {
-  position: absolute;
-  inset: -34px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(255, 255, 220, 0.95) 0%, rgba(255, 230, 120, 0.7) 32%, rgba(255, 215, 80, 0) 66%),
-    repeating-conic-gradient(rgba(255, 214, 64, 0.85) 0deg 9deg, rgba(255, 214, 64, 0) 9deg 30deg);
-  -webkit-mask: radial-gradient(circle, #000 45%, transparent 70%);
-          mask: radial-gradient(circle, #000 45%, transparent 70%);
-  animation: guest-spin 7s linear infinite, guest-pulse 1.4s ease-in-out infinite alternate;
-}
-.guest.golden .guest-halo {
-  inset: -46px;
-  background:
-    radial-gradient(circle, rgba(255, 250, 200, 1) 0%, rgba(255, 210, 60, 0.85) 34%, rgba(255, 190, 0, 0) 68%),
-    repeating-conic-gradient(rgba(255, 196, 0, 0.95) 0deg 7deg, rgba(255, 196, 0, 0) 7deg 22deg);
-}
-.guest-body {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 18px rgba(255, 200, 40, 0.9));
-  animation: guest-bob 1.8s ease-in-out infinite alternate;
-}
-.guest-body .art { position: relative; width: 100%; height: 100%; display: block; }
-.guest-hint {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 14px);
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 0.95rem;
-  font-weight: 900;
-  color: #6B4A00;
-  background: #FFF6C4;
-  border: 3px solid #E0A800;
-  border-radius: 999px;
-  padding: 0 12px;
-  line-height: 1.6;
-}
-.guest.met .guest-hint { display: none; }
-@keyframes guest-spin  { to { rotate: 360deg; } }
-@keyframes guest-pulse { from { scale: 0.92; opacity: 0.8; } to { scale: 1.08; opacity: 1; } }
-@keyframes guest-bob   { from { translate: 0 -5px; rotate: -4deg; } to { translate: 0 5px; rotate: 4deg; } }
-
-/* お客さまの絵(ゲーム・知らせ・スタンプ帳で共通) */
-.guest-art { position: relative; display: block; width: 100%; height: 100%; }
-.guest-art .art-dummy { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.guest-art .art-dummy svg { width: 100%; height: 100%; }
-.guest-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.guest-art.has-img .art-dummy { display: none; }
-.guest-emoji { font-size: 4.6rem; line-height: 1; }
-.reader-art .guest-emoji { font-size: 4rem; }
-
-.sparkle {
-  position: absolute;
-  z-index: 6;
-  font-size: 22px;
-  line-height: 1;
-  color: #FFD000;
-  text-shadow: 0 0 6px #fff, 0 0 12px #FFC400;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  animation: sparkle-twinkle 0.9s ease-out forwards;
-}
-.sparkle.big { font-size: 30px; animation: sparkle-burst 1.1s ease-out forwards; }
-@keyframes sparkle-twinkle {
-  0%   { opacity: 0; scale: 0.3; }
-  30%  { opacity: 1; scale: 1.2; }
-  100% { opacity: 0; scale: 0.4; translate: 0 -18px; }
-}
-@keyframes sparkle-burst {
-  0%   { opacity: 1; scale: 0.6; }
-  100% { opacity: 0; scale: 1.3; translate: var(--dx, 0) var(--dy, 0); }
-}
-.guest-thanks {
-  position: absolute;
-  left: 4%;
-  right: 4%;
-  margin: 0 auto;
-  top: 34%;
-  z-index: 40;
-  width: fit-content;
-  background: #FFFBEA;
-  border: 5px solid var(--c, #C9A100);
-  border-radius: 24px;
-  padding: 10px 18px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 0 26px 8px rgba(255, 210, 60, 0.7);
-  animation: big-in 0.5s cubic-bezier(.2, 1.6, .5, 1), guest-thanks-out 0.5s ease-in 2.1s forwards;
-  pointer-events: none;
-}
-.guest-thanks b { font-size: 1.3rem; font-weight: 900; line-height: 1.4; color: var(--ink); }
-.guest-thanks span { font-size: 1.05rem; font-weight: 800; color: var(--ink-soft); }
-@keyframes guest-thanks-out { to { opacity: 0; } }
-
 /* ── おはなしの知らせ・スタンプ ─────────────────────────── */
 .story-notices { width: 100%; display: flex; flex-direction: column; gap: 12px; }
 .story-notices[hidden] { display: none; }
@@ -1027,7 +835,6 @@ html, body {
 }
 .notice-btn:active { transform: scale(0.97); }
 .notice-btn:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px; }
-.notice-btn.is-guest { background: #FFFBEA; }
 .notice-head { font-size: 1.05rem; font-weight: 900; color: var(--c); line-height: 1.4; }
 .notice-title { font-size: 1.3rem; font-weight: 900; line-height: 1.4; }
 .notice-tap {
@@ -1050,34 +857,6 @@ html, body {
   to   { box-shadow: 0 6px 0 rgba(120, 50, 0, 0.35), 0 0 22px 6px rgba(255, 200, 40, 0.75); }
 }
 
-.stamp-card { border-color: #C94A0C; text-align: center; }
-.stamp-row { display: flex; justify-content: center; gap: 14px; margin: 4px 0 8px; }
-.stamp {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  border: 4px dashed #C9B9A0;
-  background: #FBF6EE;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.1rem;
-  line-height: 1;
-}
-.stamp.on {
-  border: 4px solid #C62828;
-  background: #FFF0EE;
-  box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 5px rgba(198, 40, 40, 0.5);
-  transform: rotate(-8deg);
-}
-.stamp.fresh { animation: stamp-press 0.7s cubic-bezier(.3, 1.6, .5, 1) 0.4s both; }
-@keyframes stamp-press {
-  0%   { transform: scale(2.2) rotate(-20deg); opacity: 0; }
-  60%  { transform: scale(0.9) rotate(-6deg); opacity: 1; }
-  100% { transform: scale(1) rotate(-8deg); }
-}
-.stamp-card-text { font-size: 1.1rem; font-weight: 800; color: var(--ink-soft); }
-
 /* ── おはなしを読む画面(大きな文字・ゆったりした行間) ───── */
 .reader { z-index: 120; padding: 12px; }
 .reader-card {
@@ -1096,10 +875,13 @@ html, body {
   border-radius: 999px;
   padding: 0 16px;
 }
-.reader-art { width: 96px; height: 96px; flex-shrink: 0; }
+.reader-art { display: flex; justify-content: center; gap: 10px; height: 130px; flex-shrink: 0; }
 .reader-art[hidden] { display: none; }
+.reader-art-one { width: 130px; height: 130px; }
 .reader-title { font-size: 1.6rem; font-weight: 900; line-height: 1.35; text-align: center; color: var(--ink); }
+.reader-title[hidden] { display: none; }
 .reader-text {
+  white-space: pre-line;
   font-size: 1.3rem;
   line-height: 1.95;
   font-weight: 600;
@@ -1109,7 +891,8 @@ html, body {
 }
 @media (max-height: 700px) {
   .reader-text { font-size: 1.15rem; line-height: 1.85; }
-  .reader-art { width: 72px; height: 72px; }
+  .reader-art { height: 96px; }
+  .reader-art-one { width: 96px; height: 96px; }
   .reader-title { font-size: 1.4rem; }
 }
 
@@ -1187,18 +970,27 @@ html, body {
 }
 .book-characters { list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .book-char {
+  width: 100%;
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   background: #fff;
   border: 3px solid var(--line);
   border-radius: 20px;
   padding: 12px;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
 }
-.book-char-art { width: 64px; height: 64px; flex-shrink: 0; }
-.book-char-art .guest-emoji { font-size: 3.2rem; }
+button.book-char { min-height: 96px; cursor: pointer; }
+button.book-char:active { transform: scale(0.97); }
+button.book-char:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px; }
+.book-char-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.book-char.just-revealed, .just-revealed > .book-char { animation: big-in 0.5s cubic-bezier(.2, 1.4, .5, 1); }
+.book-char-art { width: 96px; height: 96px; flex-shrink: 0; }
 .book-char-art.unknown, .book-char.locked .book-char-art {
   display: flex; align-items: center; justify-content: center;
+  width: 72px; height: 72px;
   font-size: 2.6rem; font-weight: 900; color: #6B5A42;
   background: #EDE4D6; border: 3px dashed #9C8A70; border-radius: 50%;
 }
@@ -1212,33 +1004,6 @@ html, body {
   line-height: 1.3;
 }
 .book-char-text { font-size: 1.1rem; line-height: 1.8; font-weight: 600; }
-.book-stamps-count { font-size: 1.15rem; font-weight: 900; text-align: center; }
-.book-stamps {
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px 6px;
-  background: #fff;
-  border: 3px solid var(--line);
-  border-radius: 20px;
-  padding: 14px 10px;
-}
-.book-stamps .stamp { position: relative; width: 100%; height: auto; aspect-ratio: 1; font-size: 1.5rem; border-width: 3px; }
-.stamp-goal {
-  position: absolute;
-  right: -6px;
-  bottom: -8px;
-  font-size: 0.7rem;
-  font-weight: 900;
-  line-height: 1.2;
-  background: #fff;
-  border: 2px solid var(--orange);
-  border-radius: 999px;
-  padding: 0 3px;
-  transform: rotate(8deg);
-}
-.book-stamps .stamp.on .stamp-goal { transform: rotate(16deg); }
-.book-note { font-size: 1.05rem; font-weight: 800; color: var(--ink-soft); text-align: center; }
 .book-chapters { list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .book-chapter {
   width: 100%;
@@ -1278,21 +1043,6 @@ html, body {
 .book-chapter.locked { background: #EDE4D6; border: 3px dashed #9C8A70; cursor: default; color: #6B5A42; }
 .book-chapter.locked .bc-no { background: #9C8A70; }
 .bc-locked { font-size: 0.9rem; font-weight: 800; }
-.book-guest .z-icon { width: 64px; height: 64px; }
-.book-guest .guest-emoji { font-size: 2.8rem; }
-.book-disclaimer {
-  font-size: 1.05rem;
-  line-height: 1.8;
-  font-weight: 700;
-  color: var(--ink-soft);
-  background: #fff;
-  border-top: 3px dashed var(--line);
-  border-bottom: 3px dashed var(--line);
-  padding: 12px 6px;
-  margin-top: 4px;
-  text-align: center;
-}
-
 .modal {
   position: absolute;
   inset: 0;
@@ -1332,3 +1082,353 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+
+/* ============================================================
+   仕上げ(トップページ・注文カード・光る食材・音のボタン・物語)
+   ============================================================ */
+
+/* ── 音のオン・オフ(どの画面でも右上。大きめ) ───────────── */
+.btn-sound {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 8px;
+  z-index: 150;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid var(--wood);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(40, 20, 0, 0.3);
+}
+.btn-sound:active { transform: scale(0.94); }
+.btn-sound:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px; }
+.sound-icon { font-size: 1.7rem; }
+.sound-label { font-size: 0.75rem; font-weight: 900; }
+.btn-sound.off { background: #E3DDD3; border-color: #6B5A42; }
+/* 右上のボタンと重ならないように */
+.zukan-header { padding-right: 92px; }
+#hud { right: 92px; }
+
+/* ── ① トップページ ───────────────────────────────────────── */
+#screen-start { background: transparent; }
+.home-scroll { position: relative; z-index: 1; padding-left: 16px; padding-right: 16px; }
+.home-inner {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.home-head {
+  padding-top: 70px;   /* 空の部分(音のボタンとアモネス君) */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.home-title {
+  font-size: min(2.6rem, 10.2vw);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+  color: #fff;
+  -webkit-text-stroke: 7px #0D2F5E;
+  paint-order: stroke fill;
+  text-shadow: 0 5px 0 rgba(13, 47, 94, 0.35);
+  white-space: nowrap;
+}
+.home-sub {
+  font-size: min(1.2rem, 4.8vw);
+  font-weight: 900;
+  color: #0D2F5E;
+  background: #fff;
+  border: 3px solid #0D2F5E;
+  border-radius: 999px;
+  padding: 2px 18px;
+  white-space: nowrap;
+}
+.home-middle {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.home-petros {
+  width: min(50vw, 210px);
+  height: min(50vw, 210px);
+  max-height: 20vh;
+  max-width: 20vh;
+  animation: pelican-bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 8px 8px rgba(40, 30, 10, 0.25));
+  margin-bottom: -14px;
+  position: relative;
+  z-index: 1;
+}
+.home-story {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.86);
+  border: 3px solid #fff;
+  border-radius: 22px;
+  padding: 10px 16px 12px;
+  box-shadow: 0 4px 16px rgba(40, 30, 10, 0.18);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.home-story-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #1B5E80;
+  margin-bottom: 2px;
+}
+.home-story-label {
+  font-size: 0.9rem;
+  color: #fff;
+  background: #2E7DA6;
+  border-radius: 999px;
+  padding: 0 12px;
+}
+.home-story-label[hidden] { display: none; }
+.home-story-text { font-size: 1rem; line-height: 1.7; font-weight: 700; color: var(--ink); }
+.home-bottom {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.btn-start {
+  min-height: 86px;
+  font-size: 2rem;
+  letter-spacing: 0.2em;
+  background: #2E8B3A;
+  box-shadow: 0 7px 0 #1B5E20, 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+.btn-pair .btn { line-height: 1.3; }
+.home-bottom .btn-secondary { box-shadow: 0 4px 10px rgba(40, 20, 0, 0.2); }
+.home-credit {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  padding: 2px 10px;
+  text-align: center;
+}
+.home-credit:empty { display: none; }
+/* 空をときどき、ゆったり横切るアモネス君(絵は左向きなので、右から左へ) */
+.home-amones {
+  position: absolute;
+  top: calc(6px + env(safe-area-inset-top, 0px));
+  left: 0;
+  width: 110px;
+  height: 92px;
+  z-index: 0;
+  pointer-events: none;
+  transform: translateX(560px);
+  animation: home-fly 24s linear 3s infinite;
+}
+.home-amones .art { animation: gull-bob 1.4s ease-in-out infinite alternate; }
+@keyframes home-fly {
+  0%   { transform: translate(560px, 18px); }
+  32%  { transform: translate(-160px, -2px); }
+  100% { transform: translate(-160px, -2px); }
+}
+
+/* ── ② ゲーム:注文カード(上のほう) ─────────────────────── */
+.order-card-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 4px solid var(--orange);
+  border-radius: 18px;
+  padding: 4px 10px 6px 4px;
+  pointer-events: none;
+}
+.order-card-hud[hidden] { display: none; }
+.order-card-pelican { width: 54px; height: 54px; flex-shrink: 0; }
+.order-card-body { min-width: 0; }
+.order-card-title { font-size: 1rem; font-weight: 900; line-height: 1.3; }
+.order-card-title b { color: var(--orange); }
+.order-card-ings { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.order-card-ings li {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px dashed #B39B76;
+}
+.oc-icon { position: absolute; inset: 3px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.oc-icon img { width: 100%; height: 100%; object-fit: contain; }
+.oc-check {
+  position: absolute;
+  right: -7px;
+  top: -7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2E8B3A;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 18px;
+  text-align: center;
+  display: none;
+}
+.order-card-ings li.got { border: 3px solid #2E8B3A; background: #E8F5E9; }
+.order-card-ings li.got .oc-check { display: block; animation: big-in 0.4s cubic-bezier(.2, 1.8, .5, 1); }
+.order-card-hud.complete {
+  border-color: #E0A800;
+  background: #FFF8D6;
+  animation: card-shine 0.9s ease-in-out 3;
+}
+@keyframes card-shine {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0); transform: scale(1); }
+  50%      { box-shadow: 0 0 26px 10px rgba(255, 200, 0, 0.9); transform: scale(1.04); }
+}
+
+/* 注文の料理に使う食材:ふわっと金色に光り、ゆっくり点滅 */
+.ing.is-order .ing-body {
+  border-color: #E0A800;
+  animation: order-glow 1.6s ease-in-out infinite alternate;
+}
+@keyframes order-glow {
+  from { box-shadow: 0 0 0 3px rgba(255, 224, 102, 0.7), 0 0 8px 3px rgba(255, 200, 0, 0.35); }
+  to   { box-shadow: 0 0 0 6px rgba(255, 213, 79, 1), 0 0 30px 14px rgba(255, 196, 0, 0.9); }
+}
+.ing.is-order .ing-label { background: #8A6200; }
+.ing.caught .ing-body { animation: none; }
+.ing-body .ing-img { inset: 9%; width: 82%; height: 82%; background: transparent; }
+.ing-body { background: #fff; }
+
+/* すくったときの吹き出し(注文カードの下) */
+#catch-msg { top: calc(150px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 6px; }
+.cm-icon { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; }
+.cm-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+/* 始まる前の注文:食材の絵 */
+.order-hint { font-size: 1.05rem; text-align: center; font-weight: 900; color: #6B4A00; background: #FFF3C4; border: 3px solid #E0A800; border-radius: 999px; padding: 2px 16px; }
+.order-ings { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.order-ings li { display: flex; flex-direction: column; align-items: center; width: 82px; }
+.oi-icon {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid #E0A800;
+  box-shadow: 0 0 14px 4px rgba(255, 200, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  padding: 6px;
+}
+.oi-icon img { width: 100%; height: 100%; object-fit: contain; }
+.oi-name { font-size: 0.9rem; font-weight: 900; line-height: 1.3; text-align: center; }
+
+/* 器の絵(画像の器は、ザルより高さがあるので上にはみ出してよい) */
+.vessel-art { overflow: visible; }
+
+/* 器の中・こぼれた食材の絵 */
+.pile-item .ing-img, .loose-body .ing-img { width: 100%; height: 100%; object-fit: contain; }
+
+/* ── ③ 完成 ───────────────────────────────────────────────── */
+/* 背景の絵の上でも文字が読みやすいように、白っぽい幕をかける */
+#screen-complete { background: rgba(255, 248, 236, 0.92); }
+.order-result { padding-right: 78px; }
+.order-result-pelican { width: 96px; height: 96px; }
+.order-result .speech { font-size: 1.1rem; }
+.caught-list .ci-icon { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+.caught-list .ci-icon img { width: 100%; height: 100%; object-fit: contain; }
+.ci-count { font-size: 0.9rem; color: var(--ink-soft); margin-left: 2px; }
+.notice-later {
+  width: 100%;
+  font-size: 1.3rem;
+  font-weight: 900;
+  text-align: center;
+  color: #1B5E80;
+  background: #EAF6FB;
+  border: 4px solid #2E7DA6;
+  border-radius: 22px;
+  padding: 14px 10px;
+}
+
+/* ── ④ 図鑑:パプリカは4色を並べる ─────────────────────── */
+.zukan-cell .z-icon img, .zukan-cell .z-icon .ing-img { width: 100%; height: 100%; object-fit: contain; }
+.zukan-cell .z-icon.z-variants { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 60px; height: 60px; }
+.z-variant { display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.z-variant img { width: 100%; height: 100%; object-fit: contain; }
+.detail-icon.many { width: 100%; height: auto; gap: 8px; }
+.detail-variant { display: flex; flex-direction: column; align-items: center; width: 72px; font-size: 2.4rem; }
+.detail-variant img { width: 70px; height: 70px; object-fit: contain; }
+.detail-variant-label { font-size: 1rem; font-weight: 900; line-height: 1.3; }
+
+/* ── ⑤ ペトロス君の物語 ───────────────────────────────────── */
+.book-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 3px solid var(--line);
+  border-radius: 22px;
+  padding: 10px;
+}
+.book-banner-art { width: 150px; height: 150px; }
+.book-progress { font-size: 1.15rem; font-weight: 900; }
+.char-art { position: relative; display: block; width: 100%; height: 100%; }
+.char-art > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.book-chapter .bc-title { font-size: 1.1rem; font-weight: 800; }
+.book-chapter.is-epilogue { border-color: #C9A100; background: #FFFBEA; }
+.book-chapter.is-epilogue .bc-no { background: #A67C00; }
+
+/* 読む画面:最後のページのおことわりとクレジット */
+.reader-card.is-epilogue { --c: #A67C00; }
+.reader-foot {
+  width: 100%;
+  border-top: 3px dashed var(--line);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reader-foot[hidden] { display: none; }
+.reader-disclaimer { font-size: 1.05rem; line-height: 1.8; font-weight: 700; color: var(--ink-soft); }
+.reader-credit { font-size: 0.85rem; line-height: 1.6; font-weight: 700; color: var(--ink-soft); }
+
+/* 画面が低い iPhone(SE など)では、少し詰める */
+@media (max-height: 720px) {
+  .home-head { padding-top: 62px; }
+  .home-petros { max-height: 16vh; max-width: 16vh; }
+  .home-story-text { font-size: 0.95rem; line-height: 1.6; }
+  .btn-start { min-height: 76px; font-size: 1.8rem; }
+}
+/* 見出しの行(もどるボタン・題名・音のボタン) */
+.btn-back { white-space: nowrap; min-width: 0; padding: 0 16px; }
+.zukan-title { font-size: 1.3rem; line-height: 1.3; }
+/* 説明や物語の窓は、右上の音のボタンの下から */
+.modal { padding-top: calc(88px + env(safe-area-inset-top, 0px)); }
+/* 登場者(見えたあと):絵を左に置いて、文章は回りこむ */
+li.book-char { display: block; }
+li.book-char::after { content: ''; display: block; clear: both; }
+li.book-char .book-char-art { float: left; width: 88px; height: 88px; margin: 0 10px 4px 0; }
+li.book-char .book-char-body { display: block; }
