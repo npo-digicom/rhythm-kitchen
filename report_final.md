@@ -107,6 +107,7 @@
 | アモネス_自由に飛ぶ.png | amones_fly | トップページの空を横切る |
 | アモネス_おすまし.png | amones_pose | 登場者「アモネス君」 |
 | アモネス_口げんか.png | amones_quarrel | 物語の第6話・第8話の絵 |
+| 器_ザル.png | vessel_zaru | ザル(はじめの器。食材が入る入れ物) |
 | 器_ホリアティキ.png | vessel_horiatiki | 花柄のボウル(ホリアティキの器) |
 | 器_プサリプラキ.png | vessel_psari_plaki | 黄色い縁の耐熱皿(プサリ・プラキの器) |
 | 器_ダコス.png | vessel_dakos | 青い渦巻きの大皿(ダコスの器) |

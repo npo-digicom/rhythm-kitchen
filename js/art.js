@@ -5,7 +5,7 @@
  * 画像があればそれを使い、なければここにある SVG のダミーを出します。
  *   ペトロス君 → data/settings.json の images.petros(order / home / celebrate / fly / happy / story)
  *   アモネス君 → data/settings.json の images.amones(dive / rise / fly / pose / quarrel)
- *   器         → data/vessels.json の image(ザルは画像なし)
+ *   器         → data/vessels.json の image(画像が読めないときは、ザルの SVG)
  * 鳥の画像は、どれも「左向き」です。右へ進むときは CSS の .flip で左右反転します。
  */
 const Art = (() => {
@@ -54,7 +54,7 @@ const Art = (() => {
         '<path d="M92 0 Q86 8 85 16 L90 6 Z" fill="#222"/></g>' +
     '</svg>';
 
-  // ── ザルの絵(画像なし)。300×120 の枠に、上のふちが y=14 前後になるように描く ──
+  // ── ザルの絵(画像が読めないときの代わり)。300×120 の枠に、上のふちが y=14 前後になるように描く ──
   let uid = 0;   // 模様の id が重ならないように
   const VESSEL_SVG = {
     zaru() {
