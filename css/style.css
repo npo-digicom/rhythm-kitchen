@@ -1432,3 +1432,5 @@ li.book-char { display: block; }
 li.book-char::after { content: ''; display: block; clear: both; }
 li.book-char .book-char-art { float: left; width: 88px; height: 88px; margin: 0 10px 4px 0; }
 li.book-char .book-char-body { display: block; }
+/* 画像が読めないときのダミーの鳥(右向きに描いてある)を、画像と同じ左向きに */
+.pelican-art > .art-dummy svg, .seagull-art > .art-dummy svg { transform: scaleX(-1); }

@@ -14,6 +14,15 @@ const Zukan = (() => {
       const saved = JSON.parse(localStorage.getItem(key) || 'null');
       if (saved && saved.found) record = saved;
     } catch (e) { /* 読めなければ空から */ }
+    // 動作確認用:アドレスの最後に ?reset=all で図鑑の記録も消す / ?zukan=all で全部見つけたことにする
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get('reset') === 'all') { record = { found: {} }; save(); }
+      if (q.get('zukan') === 'all') {
+        Data.get().ingredients.forEach(i => { if (!record.found[i.id]) record.found[i.id] = { first: 'test', count: 1 }; });
+        save();
+      }
+    } catch (e) { /* 無視 */ }
   }
 
   function save() {
