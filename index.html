@@ -27,7 +27,7 @@
         <div class="home-middle">
           <div id="home-petros" class="home-petros" aria-hidden="true"></div>
           <div class="home-story" aria-live="polite">
-            <p class="home-story-head"><span id="home-story-title">おはなし</span><span id="home-story-label" class="home-story-label" hidden></span></p>
+            <p id="home-story-head" class="home-story-head" hidden><span id="home-story-label" class="home-story-label"></span></p>
             <p id="home-story-text" class="home-story-text"></p>
           </div>
         </div>
@@ -131,12 +131,15 @@
           <ol id="recipe-steps" class="recipe-steps"></ol>
         </div>
 
-        <button id="btn-retry" class="btn btn-primary" type="button">もう一度遊ぶ</button>
         <div class="btn-pair">
           <button id="btn-zukan-from-complete" class="btn btn-secondary" type="button">📖 食材図鑑</button>
           <button id="btn-book-from-complete" class="btn btn-secondary" type="button">📜 ペトロス君の物語</button>
         </div>
       </div>
+    </div>
+    <!-- 「もう一度遊ぶ」は、いつも画面の下に見えるようにする -->
+    <div class="complete-foot">
+      <button id="btn-retry" class="btn btn-primary" type="button">もう一度遊ぶ</button>
     </div>
     <div id="celebrate-layer" aria-hidden="true"></div>
   </section>

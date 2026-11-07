@@ -608,18 +608,20 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;   /* 万一入りきらないときだけ動かせる */
   background: rgba(255, 244, 226, 0.88);
 }
 .order-overlay[hidden] { display: none; }
 .order-card {
   width: 100%;
+  margin: auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: clamp(8px, 1.6vh, 14px);
   animation: big-in 0.4s cubic-bezier(.2, 1.6, .5, 1);
 }
-.order-pelican { width: 190px; height: 190px; animation: pelican-bob 1.2s ease-in-out infinite; }
+.order-pelican { width: clamp(80px, 22vh, 190px); height: clamp(80px, 22vh, 190px); flex-shrink: 0; animation: pelican-bob 1.2s ease-in-out infinite; }
 @keyframes pelican-bob {
   0%, 100% { transform: translateY(0) rotate(0); }
   50%      { transform: translateY(-8px) rotate(-3deg); }
@@ -656,6 +658,17 @@ html, body {
 #pelican-pop .speech { margin-bottom: 50px; white-space: nowrap; }
 
 /* ── ③ 完成 ───────────────────────────────────────────────── */
+/* 「もう一度遊ぶ」:画面の下にいつも出ている */
+.complete-foot {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 6;
+  padding: 10px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 248, 236, 0.97);
+  border-top: 3px solid var(--line);
+  box-shadow: 0 -4px 12px rgba(60, 30, 0, 0.12);
+}
+.complete-foot .btn { min-height: 68px; }
 .complete-inner {
   display: flex;
   flex-direction: column;
@@ -1065,7 +1078,20 @@ button.book-char:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px
   align-items: center;
   gap: 10px;
   animation: big-in 0.3s cubic-bezier(.2, 1.4, .5, 1);
+  /* 中身が長いときは窓の中で動かせる。「とじる」は窓の下にいつも見えている */
+  --card-bg: #fff;
+  max-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
+.modal-card > .btn:last-child {
+  position: sticky;
+  bottom: 0;
+  flex-shrink: 0;
+  min-height: 68px;
+  box-shadow: 0 6px 0 var(--green-dark), 0 0 0 14px var(--card-bg);
+}
+.modal-card.reader-card { --card-bg: #FFFDF6; }
 .detail-icon { font-size: 4.4rem; line-height: 1; width: 110px; height: 110px; display: flex; align-items: center; justify-content: center; }
 .detail-icon img { width: 100%; height: 100%; object-fit: contain; }
 .detail-name { font-size: 1.8rem; font-weight: 900; }
@@ -1120,25 +1146,38 @@ button.book-char:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px
 
 /* ── ① トップページ ───────────────────────────────────────── */
 #screen-start { background: transparent; }
-.home-scroll { position: relative; z-index: 1; padding-left: 16px; padding-right: 16px; }
+/* トップページは、スクロールなしで1画面に全部収める。
+   画面の高さに合わせて、ペトロス君の絵・文字・余白が自動で小さくなります。
+   (--vh は画面の高さの1%。iPhone の Safari ではツールバーを除いた高さ) */
+#screen-start { --vh: 1vh; }
+@supports (height: 1dvh) { #screen-start { --vh: 1dvh; } }
+.home-scroll {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  padding:
+    calc(clamp(6px, 1.4 * var(--vh), 14px) + env(safe-area-inset-top, 0px))
+    16px
+    calc(clamp(6px, 1.4 * var(--vh), 16px) + env(safe-area-inset-bottom, 0px));
+}
 .home-inner {
-  min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: clamp(6px, 1.2 * var(--vh), 12px);
 }
 .home-head {
-  padding-top: 70px;   /* 空の部分(音のボタンとアモネス君) */
+  flex-shrink: 0;
+  padding-top: clamp(54px, 8 * var(--vh), 70px);   /* 空の部分(音のボタンとアモネス君) */
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: clamp(4px, 0.8 * var(--vh), 8px);
 }
 .home-title {
-  font-size: min(2.6rem, 10.2vw);
+  font-size: min(2.6rem, 10.2vw, 6 * var(--vh));
   font-weight: 900;
   line-height: 1.15;
   letter-spacing: 0.04em;
@@ -1149,26 +1188,31 @@ button.book-char:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px
   white-space: nowrap;
 }
 .home-sub {
-  font-size: min(1.2rem, 4.8vw);
+  font-size: min(1.2rem, 4.8vw, 3.2 * var(--vh));
   font-weight: 900;
   color: #0D2F5E;
   background: #fff;
   border: 3px solid #0D2F5E;
   border-radius: 999px;
-  padding: 2px 18px;
+  padding: 0 18px;
   white-space: nowrap;
 }
+/* 真ん中:残った高さをペトロス君と物語で分ける */
 .home-middle {
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
 }
+/* ペトロス君は、すき間に合わせて大きくなったり小さくなったりします */
 .home-petros {
-  width: min(50vw, 210px);
-  height: min(50vw, 210px);
-  max-height: 20vh;
-  max-width: 20vh;
+  flex: 1 1 0;
+  min-height: 48px;
+  max-height: 210px;
+  width: 100%;
   animation: pelican-bob 2.4s ease-in-out infinite;
   filter: drop-shadow(0 8px 8px rgba(40, 30, 10, 0.25));
   margin-bottom: -14px;
@@ -1176,57 +1220,65 @@ button.book-char:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px
   z-index: 1;
 }
 .home-story {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;   /* 万一入りきらないときだけ、囲みの中で動かせる(ボタンは隠れない) */
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   background: rgba(255, 255, 255, 0.86);
   border: 3px solid #fff;
   border-radius: 22px;
-  padding: 10px 16px 12px;
+  padding: clamp(8px, 1.4 * var(--vh), 14px) 14px;
   box-shadow: 0 4px 16px rgba(40, 30, 10, 0.18);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
-.home-story-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
-  font-weight: 900;
-  color: #1B5E80;
-  margin-bottom: 2px;
-}
+.home-story-head { margin-bottom: 4px; line-height: 1.4; }
+.home-story-head[hidden] { display: none; }
 .home-story-label {
+  display: inline-block;
   font-size: 0.9rem;
+  font-weight: 900;
   color: #fff;
   background: #2E7DA6;
   border-radius: 999px;
   padding: 0 12px;
 }
-.home-story-label[hidden] { display: none; }
-.home-story-text { font-size: 1rem; line-height: 1.7; font-weight: 700; color: var(--ink); }
+/* 本文は最低 18px、背の高い画面では 21px まで */
+.home-story-text {
+  font-size: clamp(18px, 2.6 * var(--vh), 21px);
+  line-height: clamp(1.5, 0.22 * var(--vh), 1.7);
+  font-weight: 700;
+  color: var(--ink);
+}
 .home-bottom {
+  flex-shrink: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: clamp(8px, 1.4 * var(--vh), 14px);
 }
 .btn-start {
-  min-height: 86px;
-  font-size: 2rem;
+  min-height: clamp(66px, 9.2 * var(--vh), 86px);
+  font-size: clamp(1.7rem, 4.4 * var(--vh), 2rem);
   letter-spacing: 0.2em;
   background: #2E8B3A;
   box-shadow: 0 7px 0 #1B5E20, 0 10px 20px rgba(0, 0, 0, 0.25);
 }
 .btn-pair .btn { line-height: 1.3; }
-.home-bottom .btn-secondary { box-shadow: 0 4px 10px rgba(40, 20, 0, 0.2); }
+.home-bottom .btn-secondary {
+  min-height: clamp(60px, 7.6 * var(--vh), 68px);
+  box-shadow: 0 4px 10px rgba(40, 20, 0, 0.2);
+}
 .home-credit {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.85);
   border-radius: 12px;
-  padding: 2px 10px;
+  padding: 1px 10px;
   text-align: center;
 }
 .home-credit:empty { display: none; }
@@ -1415,13 +1467,6 @@ button.book-char:focus-visible { outline: 4px solid #1565C0; outline-offset: 3px
 .reader-disclaimer { font-size: 1.05rem; line-height: 1.8; font-weight: 700; color: var(--ink-soft); }
 .reader-credit { font-size: 0.85rem; line-height: 1.6; font-weight: 700; color: var(--ink-soft); }
 
-/* 画面が低い iPhone(SE など)では、少し詰める */
-@media (max-height: 720px) {
-  .home-head { padding-top: 62px; }
-  .home-petros { max-height: 16vh; max-width: 16vh; }
-  .home-story-text { font-size: 0.95rem; line-height: 1.6; }
-  .btn-start { min-height: 76px; font-size: 1.8rem; }
-}
 /* 見出しの行(もどるボタン・題名・音のボタン) */
 .btn-back { white-space: nowrap; min-width: 0; padding: 0 16px; }
 .zukan-title { font-size: 1.3rem; line-height: 1.3; }
@@ -1434,3 +1479,11 @@ li.book-char .book-char-art { float: left; width: 88px; height: 88px; margin: 0 
 li.book-char .book-char-body { display: block; }
 /* 画像が読めないときのダミーの鳥(右向きに描いてある)を、画像と同じ左向きに */
 .pelican-art > .art-dummy svg, .seagull-art > .art-dummy svg { transform: scaleX(-1); }
+/* 画面が低いとき(小さい iPhone の Safari など):始まる前の注文を少し詰めて、「まかせて!」が見えるように */
+@media (max-height: 640px) {
+  .order-overlay { padding: 12px 16px; }
+  .order-ings { gap: 6px; }
+  .order-ings li { width: 74px; }
+  .oi-icon { width: 54px; height: 54px; padding: 4px; font-size: 28px; }
+  .order-card .speech-big { font-size: 1.25rem; padding: 6px 14px; }
+}

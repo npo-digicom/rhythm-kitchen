@@ -112,7 +112,7 @@ const Data = (() => {
     const ep = st.epilogue || {};
     return {
       labels: Object.assign({
-        bookTitle: 'ペトロス君の物語', storyBoxTitle: 'おはなし',
+        bookTitle: 'ペトロス君の物語',
         charactersHeading: '登場するみんな', chaptersHeading: '本編', chapterLabel: '第{n}話',
         lockedCharacter: 'タップすると、わかります', lockedChapter: 'まだ届いていません',
         lockedEpilogue: '第10話のあとに届きます',
